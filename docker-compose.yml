@@ -1,0 +1,91 @@
+version: "3.9"
+
+# ── Disc Golf Putting League – docker-compose for TrueNAS SCALE ──────────────
+# Copy .env.example to .env and fill in secrets before first run.
+
+services:
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: league-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-league}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-league_db}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-league}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - league-net
+
+  # ── Backend ─────────────────────────────────────────────────────────────────
+  backend:
+    image: ghcr.io/${GITHUB_REPOSITORY:-youruser/putting-league}/backend:${IMAGE_TAG:-latest}
+    container_name: league-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-league}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-league_db}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_EXPIRY: ${JWT_EXPIRY:-7d}
+      MAGIC_LINK_EXPIRY_MINUTES: ${MAGIC_LINK_EXPIRY_MINUTES:-15}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-noreply@league.local}
+      APP_URL: ${APP_URL:-http://localhost}
+      FRONTEND_URL: ${APP_URL:-http://localhost}
+      CORS_ORIGIN: ${APP_URL:-http://localhost}
+      PORT: "3001"
+      HOST: "0.0.0.0"
+    networks:
+      - league-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Frontend ────────────────────────────────────────────────────────────────
+  frontend:
+    image: ghcr.io/${GITHUB_REPOSITORY:-youruser/putting-league}/frontend:${IMAGE_TAG:-latest}
+    container_name: league-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - league-net
+
+  # ── Nginx Reverse Proxy ─────────────────────────────────────────────────────
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: league-nginx
+    restart: unless-stopped
+    depends_on:
+      - frontend
+      - backend
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - league-net
+
+volumes:
+  postgres-data:
+    driver: local
+
+networks:
+  league-net:
+    driver: bridge

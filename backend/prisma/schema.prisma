@@ -1,0 +1,248 @@
+// Prisma schema for Disc Golf Putting League
+// Supports arbitrary divisions, holes, rounds, seasons, and league nights
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Auth & Users ─────────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  isAdmin      Boolean  @default(false)
+  passwordHash String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tokens                 MagicLinkToken[]
+  player                 Player?
+  scorekeeperAssignments ScorekeeperAssignment[]
+}
+
+model MagicLinkToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// ─── League Structure ──────────────────────────────────────────────────────────
+
+model Division {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  description String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  players     Player[]
+}
+
+model Player {
+  id         String    @id @default(cuid())
+  userId     String    @unique
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  divisionId String?
+  division   Division? @relation(fields: [divisionId], references: [id])
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  scores               Score[]
+  putOffParticipations PuttOffParticipant[]
+  checkIns             CheckIn[]
+  cardPlayers          CardPlayer[]
+  scorekeeperCards     Card[]              @relation("CardScorekeeper")
+}
+
+model Season {
+  id          String      @id @default(cuid())
+  name        String
+  startDate   DateTime
+  endDate     DateTime?
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  leagueNights LeagueNight[]
+}
+
+model LeagueNight {
+  id             String         @id @default(cuid())
+  seasonId       String
+  season         Season         @relation(fields: [seasonId], references: [id])
+  date           DateTime
+  status         LeagueStatus   @default(SCHEDULED)
+  tieBreakerMode TieBreakerMode @default(SPLIT)
+  notes          String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  holes                  Hole[]
+  rounds                 Round[]
+  scorekeeperAssignments ScorekeeperAssignment[]
+  puttOffs               PuttOff[]
+  checkIns               CheckIn[]
+  cards                  Card[]
+}
+
+enum LeagueStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TieBreakerMode {
+  SPLIT
+  PUTT_OFF
+}
+
+// ─── Check-ins ─────────────────────────────────────────────────────────────────
+
+model CheckIn {
+  id            String      @id @default(cuid())
+  leagueNightId String
+  leagueNight   LeagueNight @relation(fields: [leagueNightId], references: [id], onDelete: Cascade)
+  playerId      String
+  player        Player      @relation(fields: [playerId], references: [id])
+  checkedInAt   DateTime    @default(now())
+  checkedInBy   String?     // userId of admin who checked them in
+
+  @@unique([leagueNightId, playerId])
+}
+
+// ─── Cards (player groups) ─────────────────────────────────────────────────────
+
+model Card {
+  id            String      @id @default(cuid())
+  leagueNightId String
+  leagueNight   LeagueNight @relation(fields: [leagueNightId], references: [id], onDelete: Cascade)
+  name          String      // "Card 1", "Card A", etc.
+  startingHole  Int         @default(1)
+  scorekeeperId String?
+  scorekeeper   Player?     @relation("CardScorekeeper", fields: [scorekeeperId], references: [id])
+  createdAt     DateTime    @default(now())
+
+  players       CardPlayer[]
+}
+
+model CardPlayer {
+  id        String @id @default(cuid())
+  cardId    String
+  card      Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  playerId  String
+  player    Player @relation(fields: [playerId], references: [id])
+  sortOrder Int    @default(0)
+
+  @@unique([cardId, playerId])
+}
+
+// ─── Holes & Rounds ────────────────────────────────────────────────────────────
+
+model Hole {
+  id            String      @id @default(cuid())
+  leagueNightId String
+  leagueNight   LeagueNight @relation(fields: [leagueNightId], references: [id], onDelete: Cascade)
+  number        Int
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  scores        Score[]
+
+  @@unique([leagueNightId, number])
+}
+
+model Round {
+  id            String      @id @default(cuid())
+  leagueNightId String
+  leagueNight   LeagueNight @relation(fields: [leagueNightId], references: [id], onDelete: Cascade)
+  number        Int
+  isComplete    Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  scores        Score[]
+
+  @@unique([leagueNightId, number])
+}
+
+// ─── Scoring ───────────────────────────────────────────────────────────────────
+
+model Score {
+  id         String   @id @default(cuid())
+  playerId   String
+  player     Player   @relation(fields: [playerId], references: [id])
+  holeId     String
+  hole       Hole     @relation(fields: [holeId], references: [id])
+  roundId    String
+  round      Round    @relation(fields: [roundId], references: [id])
+  position   Position
+  made       Int
+  bonus      Boolean  @default(false)
+  enteredBy  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([playerId, holeId, roundId, position])
+}
+
+enum Position {
+  SHORT
+  LONG
+}
+
+// ─── Scorekeeper Assignments ───────────────────────────────────────────────────
+
+model ScorekeeperAssignment {
+  id            String      @id @default(cuid())
+  leagueNightId String
+  leagueNight   LeagueNight @relation(fields: [leagueNightId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  holeNumbers   Int[]
+  createdAt     DateTime    @default(now())
+
+  @@unique([leagueNightId, userId])
+}
+
+// ─── Tie-Breaker Putt-Offs ────────────────────────────────────────────────────
+
+model PuttOff {
+  id            String      @id @default(cuid())
+  leagueNightId String
+  leagueNight   LeagueNight @relation(fields: [leagueNightId], references: [id])
+  divisionId    String
+  round         Int         @default(1)
+  winnerId      String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  participants  PuttOffParticipant[]
+}
+
+model PuttOffParticipant {
+  id         String  @id @default(cuid())
+  puttOffId  String
+  puttOff    PuttOff @relation(fields: [puttOffId], references: [id], onDelete: Cascade)
+  playerId   String
+  player     Player  @relation(fields: [playerId], references: [id])
+  round      Int     @default(1)
+  made       Int
+  bonus      Boolean @default(false)
+
+  @@unique([puttOffId, playerId, round])
+}
