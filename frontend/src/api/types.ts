@@ -55,6 +55,12 @@ export interface Round {
   isComplete: boolean
 }
 
+export interface ScorekeeperAssignment {
+  id: string
+  userId: string
+  user: { name: string; email: string }
+}
+
 export interface LeagueNight {
   id: string
   seasonId: string
@@ -65,6 +71,7 @@ export interface LeagueNight {
   notes?: string
   holes: Hole[]
   rounds: Round[]
+  scorekeeperAssignments?: ScorekeeperAssignment[]
   _count?: { rounds: number; holes: number }
 }
 

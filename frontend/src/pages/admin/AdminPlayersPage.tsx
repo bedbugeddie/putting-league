@@ -257,7 +257,7 @@ export default function AdminPlayersPage() {
             </div>
           </div>
           <div className="flex gap-3 mt-4">
-            <button className="btn-primary" disabled={!form.email || !form.name || !form.divisionId} onClick={() => createMut.mutate({ ...form, role: 'PLAYER' })}>Create</button>
+            <button className="btn-primary" disabled={!form.email || !form.name || !form.divisionId} onClick={() => createMut.mutate(form)}>Create</button>
             <button className="btn-secondary" onClick={() => { setShowNew(false); setForm({ email: '', name: '', divisionId: '' }) }}>Cancel</button>
           </div>
         </div>
