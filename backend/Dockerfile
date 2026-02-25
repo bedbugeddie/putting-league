@@ -34,6 +34,9 @@ COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY prisma ./prisma/
 
+# Regenerate Prisma client for the production target
+RUN npx prisma generate
+
 EXPOSE 3001
 
 # Run migrations then start server
