@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
 import { useAuth } from '../store/auth'
@@ -280,6 +280,8 @@ function FinishView({
 
 export default function ScoringPage() {
   const { id } = useParams<{ id: string }>()
+  const [searchParams] = useSearchParams()
+  const cardIdParam = searchParams.get('card')
   const queryClient = useQueryClient()
   const { isAdmin, user } = useAuth()
   const [holeIndex, setHoleIndex] = useState(0)
@@ -314,11 +316,13 @@ export default function ScoringPage() {
     const night = nightData.leagueNight
     const cards = cardsData.cards ?? []
     const myCard = user?.player?.id ? cards.find(c => c.scorekeeperId === user.player!.id) : null
-    if (!myCard) return
+    const adminCard = isAdmin && cardIdParam ? cards.find(c => c.id === cardIdParam) ?? null : null
+    const cardForEffect = adminCard ?? myCard
+    if (!cardForEffect) return
 
     const allHoles = night.holes ?? []
     const rounds = night.rounds ?? []
-    const startingHole = myCard.startingHole ?? 1
+    const startingHole = cardForEffect.startingHole ?? 1
     const holes = [
       ...allHoles.filter(h => h.number >= startingHole),
       ...allHoles.filter(h => h.number < startingHole),
@@ -330,7 +334,7 @@ export default function ScoringPage() {
     const scoreSet = new Set(
       scoresData.scores.map(s => `${s.playerId}::${s.holeId}::${s.roundId}::${s.position}`)
     )
-    const playerIds = myCard.players.map(cp => cp.playerId)
+    const playerIds = cardForEffect.players.map(cp => cp.playerId)
 
     for (let r = 0; r < rounds.length; r++) {
       for (let h = 0; h < holes.length; h++) {
@@ -357,10 +361,12 @@ export default function ScoringPage() {
   const cards = cardsData?.cards ?? []
   const myPlayerId = user?.player?.id
   const myCard = myPlayerId ? cards.find(c => c.scorekeeperId === myPlayerId) : null
+  const adminCard = isAdmin && cardIdParam ? cards.find(c => c.id === cardIdParam) ?? null : null
+  const activeCard = adminCard ?? myCard
 
-  const basePlayers: Player[] = myCard?.players.map(cp => cp.player) ?? []
+  const basePlayers: Player[] = activeCard?.players.map(cp => cp.player) ?? []
 
-  const players: Player[] = isAdmin && !myCard
+  const players: Player[] = isAdmin && !activeCard
     ? Array.from(
         new Map(
           cards.flatMap(c => c.players.map(cp => cp.player)).map(p => [p.id, p])
@@ -369,7 +375,7 @@ export default function ScoringPage() {
     : rotateLeft(basePlayers, holeIndex)
 
   // Base player order (un-rotated) for the summary — shows everyone in original throw order
-  const summaryPlayers: Player[] = isAdmin && !myCard
+  const summaryPlayers: Player[] = isAdmin && !activeCard
     ? players
     : basePlayers
 
@@ -405,7 +411,7 @@ export default function ScoringPage() {
   const allHoles = night.holes ?? []
   const rounds = night.rounds ?? []
 
-  const startingHole = myCard?.startingHole ?? 1
+  const startingHole = activeCard?.startingHole ?? 1
   const holes = [
     ...allHoles.filter(h => h.number >= startingHole),
     ...allHoles.filter(h => h.number < startingHole),
@@ -459,7 +465,7 @@ export default function ScoringPage() {
     return (
       <FinishView
         nightId={id}
-        cardName={myCard?.name ?? 'Score Entry'}
+        cardName={activeCard?.name ?? 'Score Entry'}
         onBack={() => setShowFinish(false)}
         players={summaryPlayers}
         holes={holes}
@@ -480,7 +486,7 @@ export default function ScoringPage() {
             <button onClick={() => setShowSummary(false)} className="btn-secondary text-sm py-1 px-3">
               ← Back
             </button>
-            <span className="font-semibold">{myCard?.name ?? 'Score Entry'}</span>
+            <span className="font-semibold">{activeCard?.name ?? 'Score Entry'}</span>
           </div>
         </div>
 
@@ -505,7 +511,7 @@ export default function ScoringPage() {
         <div className="flex items-center justify-between mb-2">
           <div>
             <h1 className="text-lg sm:text-xl font-bold">
-              {myCard ? myCard.name : 'Score Entry'}
+              {activeCard ? activeCard.name : 'Score Entry'}
             </h1>
             {rounds.length > 1 && (
               <p className="text-xs text-gray-500 mt-0.5">Round {roundIndex + 1} of {rounds.length}</p>

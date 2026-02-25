@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './store/auth'
+import { useTheme } from './store/theme'
 
 // Layout
 import Layout from './components/Layout'
@@ -8,6 +9,7 @@ import AdminLayout from './components/AdminLayout'
 // Public pages
 import LoginPage from './pages/LoginPage'
 import VerifyPage from './pages/VerifyPage'
+import LandingPage from './pages/LandingPage'
 
 // Leaderboard / viewer pages
 import LeagueNightsPage from './pages/LeagueNightsPage'
@@ -31,6 +33,11 @@ import AdminLeagueNightDetailPage from './pages/admin/AdminLeagueNightDetailPage
 import AdminCheckInPage from './pages/admin/AdminCheckInPage'
 import AdminPlayersPage from './pages/admin/AdminPlayersPage'
 
+function HomeRoute() {
+  const { isAuthenticated } = useAuth()
+  return isAuthenticated ? <LeagueNightsPage /> : <LandingPage />
+}
+
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth()
   if (!isAuthenticated) return <Navigate to="/login" replace />
@@ -46,6 +53,7 @@ function RequireAdmin({ children }: { children: React.ReactNode }) {
 
 
 export default function App() {
+  useTheme()
   return (
     <Routes>
       {/* Auth */}
@@ -54,7 +62,9 @@ export default function App() {
 
       {/* Public / viewer routes inside main layout */}
       <Route element={<Layout />}>
-        <Route index element={<LeagueNightsPage />} />
+        <Route index element={
+          <HomeRoute />
+        } />
         <Route path="league-nights/:id" element={<LeagueNightPage />} />
         <Route path="league-nights/:id/leaderboard" element={<LeaderboardPage />} />
         <Route path="seasons" element={<SeasonsPage />} />

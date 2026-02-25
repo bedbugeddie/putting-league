@@ -43,9 +43,9 @@ async function buildAuthResponse(app: FastifyInstance, userId: string) {
     { userId: user.id, email: user.email, isAdmin: user.isAdmin },
     { expiresIn: env.JWT_EXPIRY }
   )
-  // Strip passwordHash before sending to client
+  // Strip passwordHash before sending to client, but expose a boolean flag
   const { passwordHash: _, ...safeUser } = user as any
-  return { token: jwt, user: safeUser }
+  return { token: jwt, user: { ...safeUser, hasPassword: !!user.passwordHash } }
 }
 
 export async function authRoutes(app: FastifyInstance) {

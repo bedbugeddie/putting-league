@@ -11,8 +11,12 @@ export default function AdminDashboard() {
     queryFn: () => api.get('/league-nights'),
   })
 
-  const nights = (nightsData?.leagueNights ?? []).slice(0, 5)
-  const active = nights.find(n => n.status === 'IN_PROGRESS')
+  const allNights = nightsData?.leagueNights ?? []
+  const active = allNights.find(n => n.status === 'IN_PROGRESS')
+  const nights = allNights
+    .filter(n => n.status === 'SCHEDULED' || n.status === 'IN_PROGRESS')
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .slice(0, 5)
 
   return (
     <div className="space-y-6">
@@ -34,10 +38,10 @@ export default function AdminDashboard() {
       {/* Quick nav */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: 'League Nights', to: '/admin/league-nights', icon: '📅' },
-          { label: 'Players', to: '/admin/players', icon: '👤' },
           { label: 'Seasons', to: '/admin/seasons', icon: '🏆' },
+          { label: 'League Nights', to: '/admin/league-nights', icon: '📅' },
           { label: 'Divisions', to: '/admin/divisions', icon: '🎯' },
+          { label: 'Players', to: '/admin/players', icon: '👤' },
         ].map(item => (
           <Link key={item.to} to={item.to} className="card flex flex-col items-center gap-2 hover:border-brand-400 transition-colors text-center">
             <span className="text-3xl">{item.icon}</span>
@@ -49,7 +53,7 @@ export default function AdminDashboard() {
       {/* Recent nights */}
       <div className="card">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold">Recent League Nights</h2>
+          <h2 className="text-lg font-semibold">Upcoming League Nights</h2>
           <Link to="/admin/league-nights" className="text-sm text-brand-600 hover:underline">View all →</Link>
         </div>
         <div className="space-y-2">
@@ -59,7 +63,7 @@ export default function AdminDashboard() {
               <StatusBadge status={n.status} />
             </Link>
           ))}
-          {nights.length === 0 && <p className="text-gray-400 text-sm">No league nights yet.</p>}
+          {nights.length === 0 && <p className="text-gray-400 text-sm">No upcoming league nights.</p>}
         </div>
       </div>
     </div>

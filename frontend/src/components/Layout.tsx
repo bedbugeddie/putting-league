@@ -2,18 +2,15 @@ import { useState, useEffect } from 'react'
 import { Outlet, NavLink, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { authStore, useAuth } from '../store/auth'
-import { useTheme } from '../store/theme'
 import { api } from '../api/client'
 
 const navLinks = [
-  { to: '/', label: 'League Nights', end: true },
-  { to: '/seasons', label: 'Seasons' },
+  { to: '/', label: 'Current Event', end: true },
   { to: '/stats', label: 'Stats' },
 ]
 
 export default function Layout() {
   const { user, isAuthenticated, isAdmin } = useAuth()
-  const { theme, setTheme } = useTheme()
   const [menuOpen, setMenuOpen] = useState(false)
 
   // Refresh user profile on mount so stale localStorage sessions pick up
@@ -39,14 +36,7 @@ export default function Layout() {
   })
   const activeNightId = activeNightData?.nightId ?? null
 
-  function cycleTheme() {
-    setTheme(theme === 'system' ? 'light' : theme === 'light' ? 'dark' : 'system')
-  }
-
   function close() { setMenuOpen(false) }
-
-  const themeIcon  = theme === 'dark' ? '🌙' : theme === 'light' ? '☀️' : '💻'
-  const themeLabel = theme === 'dark' ? 'Dark mode' : theme === 'light' ? 'Light mode' : 'System theme'
 
   const mobileNavItem = ({ isActive }: { isActive: boolean }) =>
     `block py-3 text-sm border-b border-brand-700 dark:border-forest-border ${isActive ? 'font-semibold text-white dark:text-brand-300' : 'text-brand-100 dark:text-brand-200'}`
@@ -58,26 +48,18 @@ export default function Layout() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14">
             {/* Logo */}
-            <Link to="/" onClick={close} className="flex items-center gap-2 font-bold text-lg">
-              🥏 <span>Putting League</span>
+            <Link to="/" onClick={close} className="flex items-center">
+              <img src="/mvpl.png" alt="MVPL" className="h-9 w-auto" />
             </Link>
 
             {/* Desktop nav */}
             <div className="hidden sm:flex items-center gap-4 text-sm">
-              {navLinks.map(l => (
+              {isAuthenticated && navLinks.map(l => (
                 <NavLink key={l.to} to={l.to} end={l.end}
                   className={({ isActive }) => isActive ? 'font-semibold underline' : 'hover:underline'}>
                   {l.label}
                 </NavLink>
               ))}
-              <button
-                onClick={cycleTheme}
-                title={`Theme: ${theme}`}
-                className="p-1.5 rounded hover:bg-brand-600 transition-colors"
-                aria-label="Toggle color theme"
-              >
-                {themeIcon}
-              </button>
               {isAuthenticated ? (
                 <>
                   {activeNightId && (
@@ -106,39 +88,37 @@ export default function Layout() {
                     Sign out
                   </button>
                 </>
-              ) : (
-                <NavLink to="/login" className="px-3 py-1 bg-brand-800 hover:bg-brand-900 rounded">
-                  Sign In
-                </NavLink>
-              )}
+              ) : null}
             </div>
 
             {/* Mobile: right side */}
             <div className="flex sm:hidden items-center gap-3">
-              {isAuthenticated && (
-                <span className="text-brand-200 text-xs truncate max-w-[100px]">{user?.name}</span>
-              )}
-              <button
-                onClick={() => setMenuOpen(o => !o)}
-                className="p-2 rounded hover:bg-brand-600 transition-colors"
-                aria-label="Toggle menu"
-              >
-                {menuOpen ? (
-                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                ) : (
-                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
-                )}
-              </button>
+              {isAuthenticated ? (
+                <>
+                  <span className="text-brand-200 text-xs truncate max-w-[100px]">{user?.name}</span>
+                  <button
+                    onClick={() => setMenuOpen(o => !o)}
+                    className="p-2 rounded hover:bg-brand-600 transition-colors"
+                    aria-label="Toggle menu"
+                  >
+                    {menuOpen ? (
+                      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    ) : (
+                      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                      </svg>
+                    )}
+                  </button>
+                </>
+              ) : null}
             </div>
           </div>
         </div>
 
         {/* Mobile menu */}
-        {menuOpen && (
+        {menuOpen && isAuthenticated && (
           <div className="sm:hidden bg-brand-800 dark:bg-forest px-4 pb-4 space-y-1">
             {navLinks.map(l => (
               <NavLink key={l.to} to={l.to} end={l.end} onClick={close} className={mobileNavItem}>
@@ -176,12 +156,6 @@ export default function Layout() {
                 Sign In
               </NavLink>
             )}
-            <button
-              onClick={cycleTheme}
-              className="block w-full text-left py-3 text-sm text-brand-200 dark:text-brand-300"
-            >
-              {themeIcon} {themeLabel} — tap to change
-            </button>
           </div>
         )}
       </nav>
@@ -192,7 +166,7 @@ export default function Layout() {
       </main>
 
       <footer className="bg-brand-50 border-t border-brand-100 py-3 text-center text-xs text-gray-400 dark:bg-forest dark:border-forest-border dark:text-brand-300">
-        🥏 Disc Golf Putting League
+        Merrimack Valley Putting League
       </footer>
     </div>
   )

@@ -18,8 +18,16 @@ export default function LeagueNightsPage() {
 
   return (
     <div>
+      <div className="flex justify-center mb-8">
+        <img
+          src="/mvpl.png"
+          alt="Merrimack Valley Putting League"
+          className="w-64 sm:w-80 [filter:brightness(0)_invert(14%)_sepia(100%)_saturate(500%)_hue-rotate(350deg)_brightness(80%)] dark:[filter:brightness(0)_invert(78%)_sepia(55%)_saturate(150%)_hue-rotate(350deg)]"
+        />
+      </div>
+
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold">League Nights</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold">Current Event</h1>
       </div>
 
       {live.length === 0 && (

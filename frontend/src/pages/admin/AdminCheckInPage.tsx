@@ -73,6 +73,15 @@ export default function AdminCheckInPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['cards', id] }),
   })
 
+  const movePlayerMut = useMutation({
+    mutationFn: async ({ playerId, fromCardId, toCardId }: { playerId: string; fromCardId: string; toCardId: string }) => {
+      await api.delete(`/cards/${fromCardId}/players/${playerId}`)
+      await api.post(`/cards/${toCardId}/players`, { playerId })
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['cards', id] }); toast.success('Player moved') },
+    onError: (e: any) => toast.error(e.message),
+  })
+
   const assignScorekeeperMut = useMutation({
     mutationFn: ({ cardId, scorekeeperId }: { cardId: string; scorekeeperId: string | null }) =>
       api.patch(`/cards/${cardId}`, { scorekeeperId }),
@@ -263,8 +272,22 @@ export default function AdminCheckInPage() {
                         <span className={cp.player.id === card.scorekeeperId ? 'font-medium text-brand-700 dark:text-brand-300' : ''}>
                           {cp.player.user.name}
                         </span>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
                           <span className="text-xs text-gray-400">{cp.player.division?.code ?? '—'}</span>
+                          {cards.length > 1 && (
+                            <select
+                              className="text-xs border border-gray-200 rounded px-1 py-0.5 bg-white text-gray-700 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
+                              defaultValue=""
+                              onChange={e => {
+                                if (e.target.value) movePlayerMut.mutate({ playerId: cp.player.id, fromCardId: card.id, toCardId: e.target.value })
+                              }}
+                            >
+                              <option value="">Move →</option>
+                              {cards.filter(c => c.id !== card.id).map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                              ))}
+                            </select>
+                          )}
                           <button
                             onClick={() => removePlayerMut.mutate({ cardId: card.id, playerId: cp.player.id })}
                             className="text-gray-300 hover:text-red-400 text-xs"

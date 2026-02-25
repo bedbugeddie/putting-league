@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../api/client'
 import { authStore } from '../store/auth'
 import toast from 'react-hot-toast'
@@ -8,7 +8,8 @@ type Mode = 'password' | 'magic-link'
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const [mode, setMode] = useState<Mode>('password')
+  const [searchParams] = useSearchParams()
+  const [mode, setMode] = useState<Mode>(searchParams.get('signup') ? 'magic-link' : 'password')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
@@ -51,11 +52,11 @@ export default function LoginPage() {
 
   if (sent) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-brand-50">
+      <div className="min-h-screen flex items-center justify-center bg-brand-50 dark:bg-forest">
         <div className="card max-w-md w-full text-center">
           <div className="text-5xl mb-4">📧</div>
           <h1 className="text-2xl font-bold mb-2">Check your email</h1>
-          <p className="text-gray-600 mb-4">
+          <p className="text-gray-600 dark:text-gray-300 mb-4">
             We sent a sign-in link to <strong>{email}</strong>.<br />
             Click the link to sign in — it expires in 15 minutes.
           </p>
@@ -68,11 +69,13 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-brand-50">
+    <div className="min-h-screen flex items-center justify-center bg-brand-50 dark:bg-forest">
       <div className="card max-w-md w-full">
         <div className="text-center mb-6">
-          <div className="text-5xl mb-2">🥏</div>
-          <h1 className="text-2xl font-bold">Putting League</h1>
+          <img src="/mvpl.png" alt="MVPL" className="h-16 w-auto mx-auto mb-3" />
+          <h1 className="text-2xl font-bold">
+            {searchParams.get('signup') ? 'Create an Account' : 'Sign In'}
+          </h1>
         </div>
 
         {mode === 'password' ? (

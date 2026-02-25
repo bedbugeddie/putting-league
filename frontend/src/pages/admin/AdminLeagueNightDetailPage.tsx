@@ -164,7 +164,11 @@ export default function AdminLeagueNightDetailPage() {
             {cards.map(card => {
               const complete = isCardComplete(card)
               return (
-                <div key={card.id} className="flex items-center gap-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg px-3 py-2">
+                <Link
+                  key={card.id}
+                  to={`/scoring/${night.id}?card=${card.id}`}
+                  className="flex items-center gap-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
                   <div className="flex-1 min-w-0">
                     <span className="font-medium text-sm">{card.name}</span>
                     {card.scorekeeper && (
@@ -181,7 +185,7 @@ export default function AdminLeagueNightDetailPage() {
                       In progress
                     </span>
                   )}
-                </div>
+                </Link>
               )
             })}
           </div>
