@@ -30,8 +30,8 @@ export async function calcLeagueNightTotals(leagueNightId: string): Promise<Play
       totalsMap.set(key, {
         playerId: player.id,
         playerName: player.user.name,
-        divisionId: player.divisionId,
-        divisionCode: player.division.code,
+        divisionId: player.divisionId!,
+        divisionCode: player.division!.code,
         totalMade: 0,
         totalBonus: 0,
         totalScore: 0,

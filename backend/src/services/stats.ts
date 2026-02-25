@@ -13,6 +13,7 @@ export async function getSeasonLeaderboard(seasonId: string) {
     where: { hole: { leagueNightId: { in: nightIds } } },
     include: {
       player: { include: { user: true, division: true } },
+      hole: true,
     },
   })
 
@@ -31,7 +32,7 @@ export async function getSeasonLeaderboard(seasonId: string) {
       playerMap.set(key, {
         playerId: key,
         playerName: s.player.user.name,
-        divisionCode: s.player.division.code,
+        divisionCode: s.player.division!.code,
         totalScore: 0,
         nightsPlayed: new Set(),
         bonuses: 0,

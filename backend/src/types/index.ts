@@ -1,5 +1,3 @@
-import { FastifyRequest } from 'fastify'
-
 // JWT payload stored in token
 export interface JwtPayload {
   userId: string
@@ -7,10 +5,11 @@ export interface JwtPayload {
   isAdmin: boolean
 }
 
-// Augment Fastify's request type
-declare module 'fastify' {
-  interface FastifyRequest {
-    user?: JwtPayload
+// Augment @fastify/jwt so req.user is typed as JwtPayload everywhere
+declare module '@fastify/jwt' {
+  interface FastifyJWT {
+    payload: JwtPayload
+    user: JwtPayload
   }
 }
 

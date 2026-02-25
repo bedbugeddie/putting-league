@@ -72,7 +72,7 @@ export async function scoringRoutes(app: FastifyInstance) {
       if (!playerMap.has(pid)) {
         playerMap.set(pid, {
           name: score.player.user.name,
-          divisionCode: score.player.division.code,
+          divisionCode: score.player.division!.code,
           roundHoleScores: new Map(),
         })
       }

@@ -90,7 +90,7 @@ export async function statsRoutes(app: FastifyInstance) {
     const divMap = new Map<string, { divisionCode: string; totalMade: number; totalBonus: number; playerCount: Set<string> }>()
 
     for (const s of scores) {
-      const code = s.player.division.code
+      const code = s.player.division!.code
       if (!divMap.has(code)) divMap.set(code, { divisionCode: code, totalMade: 0, totalBonus: 0, playerCount: new Set() })
       const d = divMap.get(code)!
       d.totalMade += s.made
@@ -130,7 +130,7 @@ export async function statsRoutes(app: FastifyInstance) {
       ['Player', 'Division', 'Round', 'Hole', 'Position', 'Made', 'Bonus', 'Points'],
       ...scores.map(s => [
         s.player.user.name,
-        s.player.division.code,
+        s.player.division!.code,
         s.round.number,
         s.hole.number,
         s.position,
