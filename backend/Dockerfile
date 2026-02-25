@@ -21,6 +21,9 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
+# Prisma requires OpenSSL
+RUN apk add --no-cache openssl
+
 # Only install production deps
 COPY package*.json ./
 RUN npm ci --omit=dev
