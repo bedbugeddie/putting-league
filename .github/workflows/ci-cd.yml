@@ -211,7 +211,7 @@ jobs:
             # Rolling restart: backend first (runs migrations), then frontend + nginx
             docker compose up -d --no-deps --pull never backend
             sleep 10
-            docker compose up -d --no-deps --pull never frontend nginx
+            docker compose up -d --no-deps --pull missing frontend nginx
 
             # Remove old/dangling images to save disk space
             docker image prune -f
