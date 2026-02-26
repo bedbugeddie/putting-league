@@ -230,7 +230,11 @@ export default function AdminLeagueNightsPage() {
           <tbody>
             {sorted.map(n => (
               <tr key={n.id} className="border-b border-gray-100">
-                <td className="py-2 pr-4 font-medium">{format(new Date(n.date), 'MMM d, yyyy h:mm a')}</td>
+                <td className="py-2 pr-4 font-medium">
+                  <Link to={`/admin/league-nights/${n.id}`} className="hover:text-brand-600 hover:underline">
+                    {format(new Date(n.date), 'MMM d, yyyy h:mm a')}
+                  </Link>
+                </td>
                 <td className="py-2 pr-4 text-gray-500">{n.season?.name}</td>
                 <td className="py-2 pr-4 text-center"><StatusBadge status={n.status} /></td>
                 <td className="py-2">
