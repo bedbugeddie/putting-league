@@ -33,6 +33,7 @@ import AdminLeagueNightsPage from './pages/admin/AdminLeagueNightsPage'
 import AdminLeagueNightDetailPage from './pages/admin/AdminLeagueNightDetailPage'
 import AdminCheckInPage from './pages/admin/AdminCheckInPage'
 import AdminPlayersPage from './pages/admin/AdminPlayersPage'
+import AdminPlayerDetailPage from './pages/admin/AdminPlayerDetailPage'
 
 function HomeRoute() {
   const { isAuthenticated } = useAuth()
@@ -96,6 +97,7 @@ export default function App() {
         <Route path="league-nights/:id" element={<AdminLeagueNightDetailPage />} />
         <Route path="league-nights/:id/checkin" element={<AdminCheckInPage />} />
         <Route path="players" element={<AdminPlayersPage />} />
+        <Route path="players/:id" element={<AdminPlayerDetailPage />} />
       </Route>
 
       {/* Fallback */}

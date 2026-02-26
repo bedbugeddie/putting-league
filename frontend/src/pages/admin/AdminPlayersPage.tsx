@@ -1,5 +1,6 @@
 import { useRef, useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { api } from '../../api/client'
 import type { Player, Division } from '../../api/types'
 import toast from 'react-hot-toast'
@@ -314,7 +315,11 @@ export default function AdminPlayersPage() {
           <tbody>
             {filtered.map(p => (
               <tr key={p.id} className="border-b border-gray-100 dark:border-gray-700">
-                <td className="py-2 pr-4 font-medium">{p.user.name}</td>
+                <td className="py-2 pr-4 font-medium">
+                  <Link to={`/admin/players/${p.id}`} className="hover:text-brand-600 hover:underline">
+                    {p.user.name}
+                  </Link>
+                </td>
                 <td className="py-2 pr-4 text-gray-500 dark:text-gray-400 text-xs">{p.user.email}</td>
                 <td className="py-2 pr-4">
                   <select
