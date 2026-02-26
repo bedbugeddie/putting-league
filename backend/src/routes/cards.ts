@@ -135,6 +135,14 @@ export async function cardRoutes(app: FastifyInstance) {
 
     // If there are non-CCC players, reserve at least 1 card for them
     if (R > 0) cccCardCount = Math.min(cccCardCount, cardCount - 1)
+
+    // If CCC players got no dedicated cards (e.g. only 1 card total), fold them
+    // into the general pool so they aren't silently dropped
+    if (cccCardCount === 0 && cccPlayers.length > 0) {
+      otherPlayers.push(...cccPlayers)
+      if (shuffle) fisherYates(otherPlayers)
+    }
+
     const otherCardCount = cardCount - cccCardCount
 
     // Compute target size for every card (most even distribution of N across cardCount)
