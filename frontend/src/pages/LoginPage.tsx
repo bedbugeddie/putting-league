@@ -24,7 +24,8 @@ export default function LoginPage() {
         '/auth/login', { email, password }
       )
       authStore.setAuth(token, user)
-      navigate(user.isAdmin ? '/admin' : '/', { replace: true })
+      const dest = user.isAdmin ? '/admin' : (!user.player?.divisionId ? '/choose-division' : '/')
+      navigate(dest, { replace: true })
     } catch (err: any) {
       if (err.message?.includes('No password set')) {
         toast.error('No password set for this account — use a magic link to sign in.')

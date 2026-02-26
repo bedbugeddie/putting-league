@@ -26,7 +26,9 @@ export default function VerifyPage() {
     api.get<{ token: string; user: any }>(`/auth/verify?token=${token}`)
       .then(({ token: jwt, user }) => {
         authStore.setAuth(jwt, user)
-        const dest = user.isAdmin ? '/admin' : '/'
+        const dest = user.isAdmin
+          ? '/admin'
+          : (!user.player?.divisionId ? '/choose-division' : '/')
         if (!user.hasPassword) {
           setRedirectTo(dest)
           setShowPasswordPrompt(true)

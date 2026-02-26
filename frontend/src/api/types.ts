@@ -25,10 +25,10 @@ export interface Division {
 export interface Player {
   id: string
   userId: string
-  divisionId: string
+  divisionId: string | null
   isActive: boolean
   user: User
-  division: Division
+  division: Division | null
 }
 
 export interface Season {

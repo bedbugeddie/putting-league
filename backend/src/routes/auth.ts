@@ -168,6 +168,25 @@ export async function authRoutes(app: FastifyInstance) {
     return reply.send(await buildAuthResponse(app, req.user!.userId))
   })
 
+  // PATCH /players/me – set the current user's division
+  app.patch('/players/me', { preHandler: requireAuth }, async (req, reply) => {
+    const { divisionId } = z.object({ divisionId: z.string() }).parse(req.body)
+
+    const player = await prisma.player.findUnique({ where: { userId: req.user!.userId } })
+    if (!player) return reply.status(404).send({ error: 'Player profile not found' })
+
+    // Verify the division exists and is active
+    const division = await prisma.division.findUnique({ where: { id: divisionId } })
+    if (!division || !division.isActive) {
+      return reply.status(400).send({ error: 'Invalid division' })
+    }
+
+    await prisma.player.update({ where: { id: player.id }, data: { divisionId } })
+
+    // Return a fresh JWT + user with updated division
+    return reply.send(await buildAuthResponse(app, req.user!.userId))
+  })
+
   // GET /auth/me – return current user
   app.get('/auth/me', { preHandler: requireAuth }, async (req, reply) => {
     const user = await prisma.user.findUnique({

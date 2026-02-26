@@ -12,6 +12,15 @@ const divisionSchema = z.object({
 })
 
 export async function divisionRoutes(app: FastifyInstance) {
+  // GET /divisions (public) — active divisions only, for signup flow
+  app.get('/divisions', async (_req, reply) => {
+    const divisions = await prisma.division.findMany({
+      where: { isActive: true },
+      orderBy: { sortOrder: 'asc' },
+    })
+    return reply.send({ divisions })
+  })
+
   // GET /admin/divisions
   app.get('/admin/divisions', { preHandler: requireAdmin }, async (_req, reply) => {
     const divisions = await prisma.division.findMany({

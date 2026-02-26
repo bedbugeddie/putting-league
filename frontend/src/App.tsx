@@ -10,6 +10,7 @@ import AdminLayout from './components/AdminLayout'
 import LoginPage from './pages/LoginPage'
 import VerifyPage from './pages/VerifyPage'
 import LandingPage from './pages/LandingPage'
+import ChooseDivisionPage from './pages/ChooseDivisionPage'
 
 // Leaderboard / viewer pages
 import LeagueNightsPage from './pages/LeagueNightsPage'
@@ -59,6 +60,7 @@ export default function App() {
       {/* Auth */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/auth/verify" element={<VerifyPage />} />
+      <Route path="/choose-division" element={<ChooseDivisionPage />} />
 
       {/* Public / viewer routes inside main layout */}
       <Route element={<Layout />}>
