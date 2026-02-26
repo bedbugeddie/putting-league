@@ -101,6 +101,7 @@ export default function AdminDivisionsPage() {
             <tr className="border-b border-gray-200 text-gray-500">
               <SortableHeader sortKey="code"    currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} className="text-left py-2 pr-4">Code</SortableHeader>
               <SortableHeader sortKey="name"    currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} className="text-left py-2 pr-4">Name</SortableHeader>
+              <th className="text-left py-2 pr-4 text-gray-500 font-medium">Description</th>
               <SortableHeader sortKey="players" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} className="text-right py-2 pr-4">Players</SortableHeader>
               <SortableHeader sortKey="order"   currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} className="text-right py-2 pr-4">Order</SortableHeader>
               <SortableHeader sortKey="active"  currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} className="text-center py-2 pr-4">Active</SortableHeader>
@@ -112,6 +113,7 @@ export default function AdminDivisionsPage() {
               <tr key={d.id} className="border-b border-gray-100">
                 <td className="py-2 pr-4 font-mono font-bold text-brand-700">{d.code}</td>
                 <td className="py-2 pr-4">{d.name}</td>
+                <td className="py-2 pr-4 text-gray-500 max-w-xs truncate">{d.description ?? <span className="italic text-gray-300">—</span>}</td>
                 <td className="py-2 pr-4 text-right text-gray-500">{d._count?.players ?? 0}</td>
                 <td className="py-2 pr-4 text-right text-gray-500">{d.sortOrder}</td>
                 <td className="py-2 pr-4 text-center">{d.isActive ? '✅' : '❌'}</td>
