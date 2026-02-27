@@ -217,12 +217,31 @@ jobs:
             SMTP_PORT=587
             SMTP_USER=resend
             SMTP_PASS=${{ secrets.SMTP_PASS }}
-            SMTP_FROM=noreply@thefaulkners.org
+            SMTP_FROM=onboarding@mvpl.golf
             APP_URL=${{ secrets.APP_URL }}
             HTTP_PORT=5173
             GITHUB_REPOSITORY=${{ github.repository }}
             IMAGE_TAG=${IMAGE_TAG}
             EOF
+
+            # Sync postgres password (handles POSTGRES_PASSWORD rotation).
+            # POSTGRES_USER=league means no 'postgres' PG role exists, so we
+            # temporarily enable trust auth on the local unix socket to run ALTER USER.
+            docker compose exec -T postgres sh -c "
+              echo 'local all all trust' | cat - /var/lib/postgresql/data/pg_hba.conf > /tmp/ph
+              mv /tmp/ph /var/lib/postgresql/data/pg_hba.conf
+              kill -HUP \$(head -1 /var/lib/postgresql/data/postmaster.pid)
+            " \
+            && sleep 1 \
+            && docker compose exec -T postgres psql -U league \
+                 -c "ALTER USER league PASSWORD '${{ secrets.POSTGRES_PASSWORD }}';" \
+            && docker compose exec -T postgres sh -c "
+              tail -n +2 /var/lib/postgresql/data/pg_hba.conf > /tmp/ph
+              mv /tmp/ph /var/lib/postgresql/data/pg_hba.conf
+              kill -HUP \$(head -1 /var/lib/postgresql/data/postmaster.pid)
+            " \
+            && echo "→ Postgres password synced" \
+            || echo "⚠️  Postgres password sync skipped (postgres not running?)"
 
             # Rolling restart: backend first (runs migrations), then frontend + nginx
             docker compose up -d --no-deps --pull never backend

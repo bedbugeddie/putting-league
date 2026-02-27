@@ -224,7 +224,7 @@ export default function AdminLeagueNightsPage() {
               <SortableHeader sortKey="date"   currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} className="text-left py-2 pr-4">Date</SortableHeader>
               <SortableHeader sortKey="season" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} className="text-left py-2 pr-4">Season</SortableHeader>
               <SortableHeader sortKey="status" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} className="text-center py-2 pr-4">Status</SortableHeader>
-              <th className="py-2 w-24" />
+              <th className="py-2 w-24 text-center">Actions</th>
             </tr>
           </thead>
           <tbody>

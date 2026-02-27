@@ -41,11 +41,11 @@ function RoundSummary({
       const holeScores = holes.map(hole => {
         const s = getVal(player.id, hole.id, round.id, 'SHORT')
         const l = getVal(player.id, hole.id, round.id, 'LONG')
-        if (s === 3 && l === 3) bonuses++
+        bonuses += (s === 3 ? 1 : 0) + (l === 3 ? 1 : 0)
         total += s + l
         return { short: s, long: l }
       })
-      return { player, total, bonuses, holeScores }
+      return { player, total: total + bonuses, bonuses, holeScores }
     })
     .sort((a, b) => b.total - a.total)
 
@@ -65,15 +65,24 @@ function RoundSummary({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
-                <th className="text-left px-4 py-2 font-medium text-gray-500">#</th>
-                <th className="text-left px-4 py-2 font-medium text-gray-500">Player</th>
+              {/* Hole number spans two sub-columns each */}
+              <tr className="bg-gray-50 dark:bg-gray-700/50">
+                <th className="text-left px-4 py-1.5 font-medium text-gray-500" rowSpan={2}>#</th>
+                <th className="text-left px-4 py-1.5 font-medium text-gray-500" rowSpan={2}>Player</th>
                 {holes.map(h => (
-                  <th key={h.id} className="px-2 py-2 font-medium text-gray-500 text-center min-w-[3rem]">
+                  <th key={h.id} colSpan={2} className="px-2 py-1.5 font-medium text-gray-500 text-center border-l border-gray-200 dark:border-gray-600">
                     H{h.number}
                   </th>
                 ))}
-                <th className="px-4 py-2 font-medium text-gray-500 text-right">Total</th>
+                <th className="px-4 py-1.5 font-medium text-gray-500 text-right" rowSpan={2}>Total</th>
+              </tr>
+              <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
+                {holes.map(h => (
+                  <>
+                    <th key={`${h.id}-s`} className="px-2 pb-1.5 text-[10px] font-medium text-gray-400 text-center border-l border-gray-200 dark:border-gray-600">S</th>
+                    <th key={`${h.id}-l`} className="px-2 pb-1.5 text-[10px] font-medium text-gray-400 text-center">L</th>
+                  </>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -87,12 +96,14 @@ function RoundSummary({
                     )}
                   </td>
                   {holeScores.map((hs, i) => (
-                    <td key={i} className="px-2 py-3 text-center">
-                      <span className={`font-semibold ${hs.short + hs.long === 6 ? 'text-yellow-600' : 'text-gray-700 dark:text-gray-300'}`}>
-                        {hs.short + hs.long}
-                      </span>
-                      <span className="block text-[10px] text-gray-400">{hs.short}/{hs.long}</span>
-                    </td>
+                    <>
+                      <td key={`${i}-s`} className={`px-2 py-3 text-center font-semibold border-l border-gray-100 dark:border-gray-700 ${hs.short === 3 ? 'text-yellow-600' : 'text-gray-700 dark:text-gray-300'}`}>
+                        {hs.short}
+                      </td>
+                      <td key={`${i}-l`} className={`px-2 py-3 text-center font-semibold ${hs.long === 3 ? 'text-yellow-600' : 'text-gray-700 dark:text-gray-300'}`}>
+                        {hs.long}
+                      </td>
+                    </>
                   ))}
                   <td className="px-4 py-3 text-right">
                     <span className="text-xl font-bold text-brand-700">{total}</span>
@@ -107,15 +118,9 @@ function RoundSummary({
         </div>
       </div>
 
-      {nextRound ? (
-        <button onClick={onContinue} className="btn-primary w-full py-3 text-base">
-          Start Round {nextRound.number} →
-        </button>
-      ) : (
-        <div className="card text-center py-6 text-gray-500 font-medium">
-          All rounds complete!
-        </div>
-      )}
+      <button onClick={onContinue} className="btn-primary w-full py-3 text-base">
+        {nextRound ? `Start Round ${nextRound.number} →` : 'Finish →'}
+      </button>
     </div>
   )
 }
@@ -152,7 +157,7 @@ function FinishView({
         const s = getVal(player.id, hole.id, round.id, 'SHORT')
         const l = getVal(player.id, hole.id, round.id, 'LONG')
         totalMade += s + l
-        if (s === 3 && l === 3) bonuses++
+        bonuses += (s === 3 ? 1 : 0) + (l === 3 ? 1 : 0)
       }
     }
     return { player, totalMade, bonuses, totalScore: totalMade + bonuses }
@@ -174,7 +179,7 @@ function FinishView({
 
       {/* Hero */}
       <div className="card text-center py-8">
-        <p className="text-5xl mb-3">🏁</p>
+        <p className="text-5xl mb-3">✅</p>
         <h2 className="text-2xl font-bold">Card Complete!</h2>
         <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
           Overall standings will be posted once all cards are scored
@@ -357,6 +362,24 @@ export default function ScoringPage() {
   const [pendingSaves, setPendingSaves] = useState(0)
   const [localOverrides, setLocalOverrides] = useState<Map<ScoreKey, number>>(new Map())
 
+  // Track holes the user has navigated away from so we can flag incomplete ones in red
+  const [visitedHoles, setVisitedHoles] = useState<Set<number>>(new Set())
+  const prevHoleIndexRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    const prev = prevHoleIndexRef.current
+    if (prev !== null && prev !== holeIndex) {
+      setVisitedHoles(s => new Set(s).add(prev))
+    }
+    prevHoleIndexRef.current = holeIndex
+  }, [holeIndex])
+
+  // Reset visited state when moving to a new round
+  useEffect(() => {
+    setVisitedHoles(new Set())
+    prevHoleIndexRef.current = null
+  }, [roundIndex])
+
   const night = nightData?.leagueNight
   const cards = cardsData?.cards ?? []
   const myPlayerId = user?.player?.id
@@ -428,10 +451,8 @@ export default function ScoringPage() {
   function goNext() {
     if (!isLastHole) {
       setHoleIndex(h => h + 1)
-    } else if (!isLastRound) {
-      setShowSummary(true)
     } else {
-      setShowFinish(true)
+      setShowSummary(true)
     }
   }
 
@@ -455,7 +476,7 @@ export default function ScoringPage() {
     setRoundIndex(r => r + 1)
   }
 
-  const nextLabel = showSummary ? null : isLastHole ? (isLastRound ? 'Finish →' : 'Review →') : 'Next →'
+  const nextLabel = showSummary ? null : isLastHole ? 'Review →' : 'Next →'
   const prevLabel = showSummary
     ? '← Back'
     : isFirstHole && isFirstRound ? null : isFirstHole ? `← Round ${roundIndex}` : '← Prev'
@@ -497,7 +518,7 @@ export default function ScoringPage() {
           players={summaryPlayers}
           scoreMap={scoreMap}
           localOverrides={localOverrides}
-          onContinue={startNextRound}
+          onContinue={isLastRound ? () => { setShowSummary(false); setShowFinish(true) } : startNextRound}
         />
       </div>
     )
@@ -553,19 +574,32 @@ export default function ScoringPage() {
       {/* Hole dot indicators */}
       {holes.length > 1 && (
         <div className="flex justify-center gap-1.5 flex-wrap">
-          {holes.map((h, i) => (
-            <button
-              key={h.id}
-              onClick={() => setHoleIndex(i)}
-              className={`w-7 h-7 rounded-full text-xs font-semibold transition-colors ${
-                i === holeIndex
-                  ? 'bg-brand-600 text-white'
-                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400'
-              }`}
-            >
-              {h.number}
-            </button>
-          ))}
+          {holes.map((h, i) => {
+            const holeComplete = currentRound && basePlayers.length > 0 && basePlayers.every(player => {
+              const shortKey: ScoreKey = `${player.id}::${h.id}::${currentRound.id}::SHORT`
+              const longKey: ScoreKey  = `${player.id}::${h.id}::${currentRound.id}::LONG`
+              return (localOverrides.get(shortKey) ?? scoreMap.get(shortKey)?.made ?? null) !== null &&
+                     (localOverrides.get(longKey)  ?? scoreMap.get(longKey)?.made  ?? null) !== null
+            })
+            const holeIncomplete = !holeComplete && visitedHoles.has(i)
+            return (
+              <button
+                key={h.id}
+                onClick={() => setHoleIndex(i)}
+                className={`w-7 h-7 rounded-full text-xs font-semibold transition-colors ${
+                  i === holeIndex
+                    ? 'bg-brand-600 text-white'
+                    : holeComplete
+                      ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/40 dark:text-green-400'
+                      : holeIncomplete
+                        ? 'bg-red-100 text-red-600 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-400'
+                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400'
+                }`}
+              >
+                {h.number}
+              </button>
+            )
+          })}
         </div>
       )}
 
