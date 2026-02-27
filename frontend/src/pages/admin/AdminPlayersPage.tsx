@@ -324,7 +324,7 @@ export default function AdminPlayersPage() {
                 <td className="py-2 pr-4">
                   <select
                     className="text-xs border border-gray-200 rounded px-2 py-1 bg-white text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
-                    value={p.divisionId}
+                    value={p.divisionId ?? ''}
                     onChange={e => updateDivMut.mutate({ id: p.id, divisionId: e.target.value })}
                   >
                     {divisions.map(d => <option key={d.id} value={d.id}>{d.code}</option>)}
