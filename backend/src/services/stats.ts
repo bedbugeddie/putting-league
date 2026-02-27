@@ -108,6 +108,19 @@ export async function getLeagueRecords(seasonId?: string) {
     take: 5,
   })
 
+  // Enrich bonus leaders with player names
+  const bonusPlayerIds = topBonus.map(b => b.playerId)
+  const bonusPlayers = await prisma.player.findMany({
+    where: { id: { in: bonusPlayerIds } },
+    include: { user: true },
+  })
+  const nameMap = new Map(bonusPlayers.map(p => [p.id, p.user.name]))
+  const topBonusLeaders = topBonus.map(b => ({
+    playerId: b.playerId,
+    playerName: nameMap.get(b.playerId) ?? 'Unknown',
+    count: b._count.id,
+  }))
+
   // Highest single league night score – compute in memory
   const allScores = await prisma.score.findMany({
     where: { hole: nightFilter },
@@ -126,7 +139,7 @@ export async function getLeagueRecords(seasonId?: string) {
   // (simplified – return raw data for the frontend to display)
 
   return {
-    topBonusLeaders: topBonus,
+    topBonusLeaders,
     highestSingleNight,
   }
 }

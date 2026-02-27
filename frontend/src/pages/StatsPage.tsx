@@ -3,7 +3,7 @@ import { api } from '../api/client'
 import Spinner from '../components/ui/Spinner'
 
 interface Records {
-  topBonusLeaders: { playerId: string; _count: { id: number } }[]
+  topBonusLeaders: { playerId: string; playerName: string; count: number }[]
   highestSingleNight: number
 }
 
@@ -28,8 +28,8 @@ export default function StatsPage() {
             <ol className="space-y-2">
               {records.topBonusLeaders.map((p, i) => (
                 <li key={p.playerId} className="flex items-center justify-between">
-                  <span className="text-gray-700">#{i + 1} {p.playerId}</span>
-                  <span className="font-bold text-yellow-600">★ {p._count.id}</span>
+                  <span className="text-gray-700">#{i + 1} {p.playerName}</span>
+                  <span className="font-bold text-yellow-600">★ {p.count}</span>
                 </li>
               ))}
             </ol>
