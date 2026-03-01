@@ -85,7 +85,7 @@ export async function getPlayerStats(playerId: string) {
     totalScore,
     highestNight,
     avgPerNight: Math.round(avgPerNight * 100) / 100,
-    shortAccuracy: shortScores.length ? totalMade / (shortScores.length * 3) : 0,
+    shortAccuracy: shortScores.length ? shortScores.reduce((s, x) => s + x.made, 0) / (shortScores.length * 3) : 0,
     longAccuracy: longScores.length
       ? longScores.reduce((s, x) => s + x.made, 0) / (longScores.length * 3)
       : 0,
