@@ -109,6 +109,7 @@ export default function AdminPlayerDetailPage() {
       {history.length > 0 && (
         <div className="card">
           <h2 className="text-lg font-semibold mb-4">Night History</h2>
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 dark:border-gray-700 text-gray-500 text-left">
@@ -138,6 +139,7 @@ export default function AdminPlayerDetailPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

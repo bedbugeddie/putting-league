@@ -97,6 +97,7 @@ export default function AdminDivisionsPage() {
 
       {/* Table */}
       <div className="card">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 text-gray-500">
@@ -134,6 +135,7 @@ export default function AdminDivisionsPage() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   )
