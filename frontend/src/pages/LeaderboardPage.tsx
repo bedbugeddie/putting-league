@@ -1,11 +1,21 @@
 import { useState, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { useLeaderboard } from '../hooks/useLeaderboard'
+import { api } from '../api/client'
 import type { PlayerTotals } from '../api/types'
 import Spinner from '../components/ui/Spinner'
 import SortableHeader from '../components/ui/SortableHeader'
 import { useSortable } from '../hooks/useSortable'
 import clsx from 'clsx'
+
+interface PayoutInfo {
+  payout: number
+  place: number
+  pool: number
+  isTied: boolean
+  pendingPuttOff: boolean
+}
 
 function RankBadge({ rank }: { rank: number }) {
   if (rank === 1) return <span className="text-yellow-500 font-bold">🥇</span>
@@ -14,7 +24,30 @@ function RankBadge({ rank }: { rank: number }) {
   return <span className="text-gray-400 font-semibold">#{rank}</span>
 }
 
-function LeaderboardTable({ players, title }: { players: PlayerTotals[]; title: string }) {
+function PayoutBadge({ info }: { info: PayoutInfo }) {
+  if (info.pendingPuttOff) {
+    return (
+      <span className="inline-flex items-center gap-0.5 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded px-1.5 py-0.5">
+        💰 TBD
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded px-1.5 py-0.5">
+      💰 ${info.payout}
+    </span>
+  )
+}
+
+function LeaderboardTable({
+  players,
+  title,
+  payoutMap,
+}: {
+  players: PlayerTotals[]
+  title: string
+  payoutMap: Map<string, PayoutInfo>
+}) {
   const { sortKey, sortDir, toggleSort } = useSortable('score', 'desc')
 
   // Score rank is fixed from the original backend order; persists across re-sorts
@@ -41,6 +74,8 @@ function LeaderboardTable({ players, title }: { players: PlayerTotals[]; title: 
     })
   }, [players, sortKey, sortDir])
 
+  const hasPayouts = payoutMap.size > 0
+
   return (
     <div className="card p-0 overflow-hidden">
       <h2 className="text-lg font-semibold px-4 py-3 border-b border-gray-100 dark:border-gray-700">{title}</h2>
@@ -54,35 +89,53 @@ function LeaderboardTable({ players, title }: { players: PlayerTotals[]; title: 
             <SortableHeader sortKey="score"  currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} className="text-right py-2.5 pr-4 font-bold">Score</SortableHeader>
             <SortableHeader sortKey="short"  currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} className="text-right py-2.5 pr-3 hidden sm:table-cell">Short</SortableHeader>
             <SortableHeader sortKey="long"   currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} className="text-right py-2.5 pr-4 hidden sm:table-cell">Long</SortableHeader>
+            {hasPayouts && <th className="text-right py-2.5 pr-4 hidden sm:table-cell text-green-700 dark:text-green-400">Payout</th>}
           </tr>
         </thead>
         <tbody>
-          {sorted.map(p => (
-            <tr
-              key={p.playerId}
-              className={clsx(
-                'border-b border-gray-100 dark:border-gray-700',
-                p.playerId === firstPlaceId ? 'bg-yellow-50 dark:bg-yellow-900/20' : '',
-              )}
-            >
-              <td className="py-3 px-4"><RankBadge rank={scoreRank.get(p.playerId) ?? 0} /></td>
-              <td className="py-3 pr-3 font-medium">
-                <span className="block">{p.playerName}</span>
-                {p.totalBonus > 0 && (
-                  <span className="text-xs text-yellow-600 sm:hidden">+{p.totalBonus} ★</span>
+          {sorted.map(p => {
+            const payoutInfo = payoutMap.get(p.playerId)
+            return (
+              <tr
+                key={p.playerId}
+                className={clsx(
+                  'border-b border-gray-100 dark:border-gray-700',
+                  p.playerId === firstPlaceId ? 'bg-yellow-50 dark:bg-yellow-900/20' : '',
+                  payoutInfo && !payoutInfo.pendingPuttOff ? 'bg-green-50/30 dark:bg-green-900/10' : '',
                 )}
-              </td>
-              <td className="py-3 pr-3 text-right text-gray-600 hidden sm:table-cell">{p.totalMade}</td>
-              <td className="py-3 pr-3 text-right text-yellow-600 hidden sm:table-cell">
-                {p.totalBonus > 0 ? `+${p.totalBonus}` : '—'}
-              </td>
-              <td className="py-3 pr-4 text-right font-bold text-brand-700 text-base">{p.totalScore}</td>
-              <td className="py-3 pr-3 text-right text-gray-500 hidden sm:table-cell">{p.shortMade}</td>
-              <td className="py-3 pr-4 text-right text-gray-500 hidden sm:table-cell">{p.longMade}</td>
-            </tr>
-          ))}
+              >
+                <td className="py-3 px-4"><RankBadge rank={scoreRank.get(p.playerId) ?? 0} /></td>
+                <td className="py-3 pr-3 font-medium">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span>{p.playerName}</span>
+                    {/* Show payout badge inline on mobile */}
+                    {payoutInfo && (
+                      <span className="sm:hidden">
+                        <PayoutBadge info={payoutInfo} />
+                      </span>
+                    )}
+                  </div>
+                  {p.totalBonus > 0 && (
+                    <span className="text-xs text-yellow-600 sm:hidden">+{p.totalBonus} ★</span>
+                  )}
+                </td>
+                <td className="py-3 pr-3 text-right text-gray-600 hidden sm:table-cell">{p.totalMade}</td>
+                <td className="py-3 pr-3 text-right text-yellow-600 hidden sm:table-cell">
+                  {p.totalBonus > 0 ? `+${p.totalBonus}` : '—'}
+                </td>
+                <td className="py-3 pr-4 text-right font-bold text-brand-700 text-base">{p.totalScore}</td>
+                <td className="py-3 pr-3 text-right text-gray-500 hidden sm:table-cell">{p.shortMade}</td>
+                <td className="py-3 pr-4 text-right text-gray-500 hidden sm:table-cell">{p.longMade}</td>
+                {hasPayouts && (
+                  <td className="py-3 pr-4 text-right hidden sm:table-cell">
+                    {payoutInfo ? <PayoutBadge info={payoutInfo} /> : <span className="text-gray-300">—</span>}
+                  </td>
+                )}
+              </tr>
+            )
+          })}
           {players.length === 0 && (
-            <tr><td colSpan={7} className="py-8 text-center text-gray-400">No scores yet</td></tr>
+            <tr><td colSpan={hasPayouts ? 8 : 7} className="py-8 text-center text-gray-400">No scores yet</td></tr>
           )}
         </tbody>
       </table>
@@ -95,23 +148,54 @@ export default function LeaderboardPage() {
   const { data, isLoading, connected } = useLeaderboard(id ?? null)
   const [tab, setTab] = useState<'overall' | string>('overall')
 
+  const { data: payoutData } = useQuery<{ payouts: Record<string, PayoutInfo> }>({
+    queryKey: ['public-payouts', id],
+    queryFn: () => api.get(`/league-nights/${id}/payouts`),
+    enabled: !!id,
+    refetchInterval: 15_000,
+  })
+
   if (isLoading) return <div className="flex justify-center py-20"><Spinner className="h-10 w-10" /></div>
 
   const overall = data?.overall ?? []
   const byDivision = data?.byDivision ?? {}
   const divisions = Object.keys(byDivision).sort()
 
+  const payoutMap = new Map<string, PayoutInfo>(
+    Object.entries(payoutData?.payouts ?? {})
+  )
+
+  // For division tabs, filter payoutMap to only that division's players
+  function divisionPayoutMap(players: PlayerTotals[]) {
+    const ids = new Set(players.map(p => p.playerId))
+    const filtered = new Map<string, PayoutInfo>()
+    for (const [pid, info] of payoutMap.entries()) {
+      if (ids.has(pid)) filtered.set(pid, info)
+    }
+    return filtered
+  }
+
+  const hasAnyPayout = payoutMap.size > 0
+
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl sm:text-3xl font-bold">Leaderboard</h1>
-        <div className={clsx(
-          'flex items-center gap-2 text-xs sm:text-sm px-3 py-1 rounded-full',
-          connected ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-        )}>
-          <span className={clsx('w-2 h-2 rounded-full shrink-0', connected ? 'bg-green-500' : 'bg-gray-400')} />
-          {connected ? 'Live' : 'Connecting…'}
+        <div className="flex items-center gap-3">
+          {hasAnyPayout && (
+            <div className="flex items-center gap-1.5 text-xs text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 px-2.5 py-1 rounded-full">
+              <span>💰</span>
+              <span>Payouts active</span>
+            </div>
+          )}
+          <div className={clsx(
+            'flex items-center gap-2 text-xs sm:text-sm px-3 py-1 rounded-full',
+            connected ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+          )}>
+            <span className={clsx('w-2 h-2 rounded-full shrink-0', connected ? 'bg-green-500' : 'bg-gray-400')} />
+            {connected ? 'Live' : 'Connecting…'}
+          </div>
         </div>
       </div>
 
@@ -135,8 +219,12 @@ export default function LeaderboardPage() {
       </div>
 
       {tab === 'overall'
-        ? <LeaderboardTable players={overall} title="Overall" />
-        : <LeaderboardTable players={byDivision[tab] ?? []} title={`Division ${tab}`} />
+        ? <LeaderboardTable players={overall} title="Overall" payoutMap={payoutMap} />
+        : <LeaderboardTable
+            players={byDivision[tab] ?? []}
+            title={`Division ${tab}`}
+            payoutMap={divisionPayoutMap(byDivision[tab] ?? [])}
+          />
       }
     </div>
   )

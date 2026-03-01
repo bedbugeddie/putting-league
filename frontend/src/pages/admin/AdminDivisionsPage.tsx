@@ -7,8 +7,8 @@ import Spinner from '../../components/ui/Spinner'
 import SortableHeader from '../../components/ui/SortableHeader'
 import { useSortable } from '../../hooks/useSortable'
 
-interface DivisionForm { code: string; name: string; description: string; sortOrder: number; isActive: boolean }
-const EMPTY: DivisionForm = { code: '', name: '', description: '', sortOrder: 0, isActive: true }
+interface DivisionForm { code: string; name: string; description: string; sortOrder: number; isActive: boolean; entryFee: number }
+const EMPTY: DivisionForm = { code: '', name: '', description: '', sortOrder: 0, isActive: true, entryFee: 8 }
 
 export default function AdminDivisionsPage() {
   const qc = useQueryClient()
@@ -41,7 +41,7 @@ export default function AdminDivisionsPage() {
 
   function startEdit(d: Division) {
     setEditing(d)
-    setForm({ code: d.code, name: d.name, description: d.description ?? '', sortOrder: d.sortOrder, isActive: d.isActive })
+    setForm({ code: d.code, name: d.name, description: d.description ?? '', sortOrder: d.sortOrder, isActive: d.isActive, entryFee: d.entryFee })
   }
 
   const { sortKey, sortDir, toggleSort } = useSortable('order')
@@ -80,6 +80,7 @@ export default function AdminDivisionsPage() {
             <div><label className="label">Name</label><input className="input" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="A Pool – Advanced" /></div>
             <div><label className="label">Description</label><input className="input" value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} /></div>
             <div><label className="label">Sort Order</label><input type="number" className="input" value={form.sortOrder} onChange={e => setForm(p => ({ ...p, sortOrder: Number(e.target.value) }))} /></div>
+            <div><label className="label">Entry Fee ($)</label><input type="number" min="0" step="0.50" className="input" value={form.entryFee} onChange={e => setForm(p => ({ ...p, entryFee: Number(e.target.value) }))} placeholder="8" /></div>
             <div className="flex items-center gap-2 col-span-2">
               <input type="checkbox" id="isActive" checked={form.isActive} onChange={e => setForm(p => ({ ...p, isActive: e.target.checked }))} />
               <label htmlFor="isActive" className="text-sm">Active</label>
@@ -103,6 +104,7 @@ export default function AdminDivisionsPage() {
               <SortableHeader sortKey="name"    currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} className="text-left py-2 pr-4">Name</SortableHeader>
               <th className="text-left py-2 pr-4 text-gray-500 font-medium">Description</th>
               <SortableHeader sortKey="players" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} className="text-right py-2 pr-4">Players</SortableHeader>
+              <th className="text-right py-2 pr-4 text-gray-500 font-medium">Entry Fee</th>
               <SortableHeader sortKey="order"   currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} className="text-right py-2 pr-4">Order</SortableHeader>
               <SortableHeader sortKey="active"  currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} className="text-center py-2 pr-4">Active</SortableHeader>
               <th className="py-2 w-16" />
@@ -115,6 +117,7 @@ export default function AdminDivisionsPage() {
                 <td className="py-2 pr-4">{d.name}</td>
                 <td className="py-2 pr-4 text-gray-500 max-w-xs truncate">{d.description ?? <span className="italic text-gray-300">—</span>}</td>
                 <td className="py-2 pr-4 text-right text-gray-500">{d._count?.players ?? 0}</td>
+                <td className="py-2 pr-4 text-right text-gray-500">${d.entryFee.toFixed(2)}</td>
                 <td className="py-2 pr-4 text-right text-gray-500">{d.sortOrder}</td>
                 <td className="py-2 pr-4 text-center">{d.isActive ? '✅' : '❌'}</td>
                 <td className="py-2">

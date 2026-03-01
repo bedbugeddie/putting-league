@@ -46,6 +46,7 @@ model Division {
   description String?
   sortOrder   Int      @default(0)
   isActive    Boolean  @default(true)
+  entryFee    Float    @default(8)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -122,6 +123,7 @@ model CheckIn {
   player        Player      @relation(fields: [playerId], references: [id])
   checkedInAt   DateTime    @default(now())
   checkedInBy   String?     // userId of admin who checked them in
+  hasPaid       Boolean     @default(false)
 
   @@unique([leagueNightId, playerId])
 }

@@ -20,6 +20,7 @@ import { statsRoutes } from './routes/stats.js'
 import { wsRoutes } from './routes/ws.js'
 import { checkInRoutes } from './routes/checkins.js'
 import { cardRoutes } from './routes/cards.js'
+import { payoutRoutes } from './routes/admin/payouts.js'
 
 const app = Fastify({
   logger: {
@@ -62,6 +63,7 @@ async function bootstrap() {
   await app.register(statsRoutes)
   await app.register(checkInRoutes)
   await app.register(cardRoutes)
+  await app.register(payoutRoutes)
   await app.register(wsRoutes)
 
   // ── Health check ─────────────────────────────────────────────────────────────

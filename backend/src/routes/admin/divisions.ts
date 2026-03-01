@@ -9,6 +9,7 @@ const divisionSchema = z.object({
   description: z.string().max(500).optional(),
   sortOrder: z.number().int().default(0),
   isActive: z.boolean().default(true),
+  entryFee: z.number().min(0).default(8),
 })
 
 export async function divisionRoutes(app: FastifyInstance) {

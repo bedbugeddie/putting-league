@@ -126,6 +126,7 @@ export default function AdminLeagueNightDetailPage() {
       {/* Quick links */}
       <div className="flex gap-3 flex-wrap">
         <Link to={`/admin/league-nights/${night.id}/checkin`} className="btn-primary">Check-In & Cards</Link>
+        <Link to={`/admin/league-nights/${night.id}/payout`} className="btn-secondary">💰 Payout Calculator</Link>
         <Link to={`/scoring/${night.id}`} className="btn-secondary">Enter Scores</Link>
         <Link to={`/league-nights/${night.id}/leaderboard`} className="btn-secondary">View Leaderboard</Link>
         <a href={`/api/admin/league-nights/${night.id}/export/csv`} className="btn-secondary">Export CSV</a>

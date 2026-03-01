@@ -10,7 +10,7 @@ async function main() {
     prisma.division.upsert({
       where: { code: 'AAA' },
       update: {},
-      create: { code: 'AAA', name: 'A Pool – Advanced', sortOrder: 1 },
+      create: { code: 'AAA', name: 'A Pool – Advanced', sortOrder: 1, entryFee: 13 },
     }),
     prisma.division.upsert({
       where: { code: 'BBB' },

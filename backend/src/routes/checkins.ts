@@ -11,6 +11,10 @@ const bulkCheckInSchema = z.object({
   playerIds: z.array(z.string().cuid()),
 })
 
+const paymentSchema = z.object({
+  hasPaid: z.boolean(),
+})
+
 export async function checkInRoutes(app: FastifyInstance) {
   // GET all check-ins for a league night (public)
   app.get('/league-nights/:id/checkins', async (req, reply) => {
@@ -103,5 +107,18 @@ export async function checkInRoutes(app: FastifyInstance) {
       where: { leagueNightId_playerId: { leagueNightId: id, playerId } },
     })
     return reply.status(204).send()
+  })
+
+  // PATCH mark player as paid/unpaid – admin/scorekeeper only
+  app.patch('/league-nights/:id/checkins/:playerId', { preHandler: requireScorekeeper }, async (req, reply) => {
+    const { id, playerId } = req.params as { id: string; playerId: string }
+    const { hasPaid } = paymentSchema.parse(req.body)
+
+    const checkIn = await prisma.checkIn.update({
+      where: { leagueNightId_playerId: { leagueNightId: id, playerId } },
+      data: { hasPaid },
+      include: { player: { include: { user: true, division: true } } },
+    })
+    return reply.send({ checkIn })
   })
 }

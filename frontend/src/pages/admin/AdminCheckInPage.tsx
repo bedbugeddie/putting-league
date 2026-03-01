@@ -51,6 +51,13 @@ export default function AdminCheckInPage() {
     onError: (e: any) => toast.error(e.message),
   })
 
+  const paymentMut = useMutation({
+    mutationFn: ({ playerId, hasPaid }: { playerId: string; hasPaid: boolean }) =>
+      api.patch(`/league-nights/${id}/checkins/${playerId}`, { hasPaid }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['checkins', id] }),
+    onError: (e: any) => toast.error(e.message),
+  })
+
   const generateMut = useMutation({
     mutationFn: () =>
       api.post(`/league-nights/${id}/cards/generate`, { minPlayersPerCard, shuffle }),
@@ -101,13 +108,19 @@ export default function AdminCheckInPage() {
   const allPlayers = allPlayersData?.players ?? []
   const checkIns = checkInsData?.checkIns ?? []
   const cards = cardsData?.cards ?? []
-  const checkedInIds = new Set(checkIns.map(c => c.playerId))
+  const checkedInMap = new Map(checkIns.map(c => [c.playerId, c]))
 
   const totalHoles = nightData?.leagueNight?.holes?.length ?? 1
   const N = checkIns.length
   const previewCardCount = N === 0 ? 0
     : N < minPlayersPerCard ? 1
     : Math.min(Math.floor(N / minPlayersPerCard), totalHoles)
+
+  const paidCount = checkIns.filter(c => c.hasPaid).length
+  const totalPool = checkIns.reduce((sum, c) => {
+    if (!c.hasPaid) return sum
+    return sum + (c.player.division?.entryFee ?? 0)
+  }, 0)
 
   // Group all players by division for the check-in list
   const byDivision = new Map<string, Player[]>()
@@ -124,46 +137,86 @@ export default function AdminCheckInPage() {
         <Link to={`/admin/league-nights/${id}`} className="text-sm text-brand-600 hover:underline">← Night Details</Link>
         <h1 className="text-xl sm:text-2xl font-bold">Check-In & Cards</h1>
         <span className="badge bg-brand-100 text-brand-800">{checkIns.length} checked in</span>
+        {paidCount > 0 && (
+          <span className="badge bg-green-100 text-green-800">{paidCount} paid · ${totalPool.toFixed(0)} pool</span>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* ── Left: Check-in list ── */}
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold">Player Check-In</h2>
-          <p className="text-sm text-gray-500">Toggle players present tonight. Only checked-in players appear on cards and the leaderboard.</p>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Player Check-In</h2>
+            <Link
+              to={`/admin/league-nights/${id}/payout`}
+              className="btn-secondary text-xs px-3 py-1.5"
+            >
+              💰 Payout Calculator
+            </Link>
+          </div>
+          <p className="text-sm text-gray-500">Toggle players present tonight. Use the $ button to mark entry fee payment.</p>
 
-          {divisions.map(([divCode, players]) => (
-            <div key={divCode} className="card">
-              <h3 className="text-sm font-semibold text-gray-500 mb-3">
-                {divCode}{players[0]?.division?.name ? ` — ${players[0].division.name}` : ''}
-              </h3>
-              <div className="space-y-2">
-                {players.map(p => {
-                  const isIn = checkedInIds.has(p.id)
-                  return (
-                    <button
-                      key={p.id}
-                      onClick={() => isIn ? checkOutMut.mutate(p.id) : checkInMut.mutate(p.id)}
-                      className={clsx(
-                        'w-full flex items-center justify-between px-4 py-3 rounded-lg border text-sm transition-colors min-h-[48px]',
-                        isIn
-                          ? 'bg-brand-50 border-brand-300 text-brand-800 dark:bg-brand-900/30 dark:border-brand-700 dark:text-brand-200'
-                          : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600'
-                      )}
-                    >
-                      <span className="font-medium">{p.user.name}</span>
-                      <span className={clsx(
-                        'text-sm font-semibold',
-                        isIn ? 'text-brand-600' : 'text-gray-400'
-                      )}>
-                        {isIn ? '✓ In' : 'Out'}
-                      </span>
-                    </button>
-                  )
-                })}
+          {divisions.map(([divCode, players]) => {
+            const divCheckIns = players.filter(p => checkedInMap.has(p.id))
+            const divPaid = divCheckIns.filter(p => checkedInMap.get(p.id)?.hasPaid).length
+            const entryFee = players[0]?.division?.entryFee ?? 0
+            return (
+              <div key={divCode} className="card">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-gray-500">
+                    {divCode}{players[0]?.division?.name ? ` — ${players[0].division.name}` : ''}
+                  </h3>
+                  {divCheckIns.length > 0 && (
+                    <span className="text-xs text-gray-400">
+                      {divPaid}/{divCheckIns.length} paid · ${(divPaid * entryFee).toFixed(0)} pool
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  {players.map(p => {
+                    const checkIn = checkedInMap.get(p.id)
+                    const isIn = !!checkIn
+                    const hasPaid = checkIn?.hasPaid ?? false
+                    return (
+                      <div key={p.id} className="flex items-center gap-2">
+                        {/* Check-in toggle */}
+                        <button
+                          onClick={() => isIn ? checkOutMut.mutate(p.id) : checkInMut.mutate(p.id)}
+                          className={clsx(
+                            'flex-1 flex items-center justify-between px-4 py-3 rounded-lg border text-sm transition-colors min-h-[48px]',
+                            isIn
+                              ? 'bg-brand-50 border-brand-300 text-brand-800 dark:bg-brand-900/30 dark:border-brand-700 dark:text-brand-200'
+                              : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600'
+                          )}
+                        >
+                          <span className="font-medium">{p.user.name}</span>
+                          <span className={clsx('text-sm font-semibold', isIn ? 'text-brand-600' : 'text-gray-400')}>
+                            {isIn ? '✓ In' : 'Out'}
+                          </span>
+                        </button>
+
+                        {/* Payment toggle — only visible when checked in */}
+                        {isIn && (
+                          <button
+                            onClick={() => paymentMut.mutate({ playerId: p.id, hasPaid: !hasPaid })}
+                            title={hasPaid ? 'Mark as unpaid' : 'Mark as paid'}
+                            className={clsx(
+                              'shrink-0 px-3 py-3 rounded-lg border text-sm font-semibold transition-colors min-h-[48px]',
+                              hasPaid
+                                ? 'bg-green-50 border-green-300 text-green-700 dark:bg-green-900/30 dark:border-green-700 dark:text-green-300'
+                                : 'bg-white border-gray-200 text-gray-400 hover:border-green-300 hover:text-green-600 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-500'
+                            )}
+                          >
+                            {hasPaid ? '$ ✓' : '$'}
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
 
         {/* ── Right: Card management ── */}
@@ -267,36 +320,42 @@ export default function AdminCheckInPage() {
 
                   {/* Players list */}
                   <div className="space-y-1">
-                    {card.players.map(cp => (
-                      <div key={cp.id} className="flex items-center justify-between text-sm bg-gray-50 px-3 py-1.5 rounded dark:bg-gray-700/50">
-                        <span className={cp.player.id === card.scorekeeperId ? 'font-medium text-brand-700 dark:text-brand-300' : ''}>
-                          {cp.player.user.name}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-400">{cp.player.division?.code ?? '—'}</span>
-                          {cards.length > 1 && (
-                            <select
-                              className="text-xs border border-gray-200 rounded px-1 py-0.5 bg-white text-gray-700 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
-                              defaultValue=""
-                              onChange={e => {
-                                if (e.target.value) movePlayerMut.mutate({ playerId: cp.player.id, fromCardId: card.id, toCardId: e.target.value })
-                              }}
+                    {card.players.map(cp => {
+                      const checkIn = checkedInMap.get(cp.player.id)
+                      return (
+                        <div key={cp.id} className="flex items-center justify-between text-sm bg-gray-50 px-3 py-1.5 rounded dark:bg-gray-700/50">
+                          <span className={cp.player.id === card.scorekeeperId ? 'font-medium text-brand-700 dark:text-brand-300' : ''}>
+                            {cp.player.user.name}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            {checkIn?.hasPaid && (
+                              <span className="text-xs text-green-600 font-semibold">$</span>
+                            )}
+                            <span className="text-xs text-gray-400">{cp.player.division?.code ?? '—'}</span>
+                            {cards.length > 1 && (
+                              <select
+                                className="text-xs border border-gray-200 rounded px-1 py-0.5 bg-white text-gray-700 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
+                                defaultValue=""
+                                onChange={e => {
+                                  if (e.target.value) movePlayerMut.mutate({ playerId: cp.player.id, fromCardId: card.id, toCardId: e.target.value })
+                                }}
+                              >
+                                <option value="">Move →</option>
+                                {cards.filter(c => c.id !== card.id).map(c => (
+                                  <option key={c.id} value={c.id}>{c.name}</option>
+                                ))}
+                              </select>
+                            )}
+                            <button
+                              onClick={() => removePlayerMut.mutate({ cardId: card.id, playerId: cp.player.id })}
+                              className="text-gray-300 hover:text-red-400 text-xs"
                             >
-                              <option value="">Move →</option>
-                              {cards.filter(c => c.id !== card.id).map(c => (
-                                <option key={c.id} value={c.id}>{c.name}</option>
-                              ))}
-                            </select>
-                          )}
-                          <button
-                            onClick={() => removePlayerMut.mutate({ cardId: card.id, playerId: cp.player.id })}
-                            className="text-gray-300 hover:text-red-400 text-xs"
-                          >
-                            ✕
-                          </button>
+                              ✕
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               ))}

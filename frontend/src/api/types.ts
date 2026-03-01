@@ -19,6 +19,7 @@ export interface Division {
   description?: string
   sortOrder: number
   isActive: boolean
+  entryFee: number
   _count?: { players: number }
 }
 
@@ -142,7 +143,36 @@ export interface CheckIn {
   leagueNightId: string
   playerId: string
   checkedInAt: string
+  hasPaid: boolean
   player: Player
+}
+
+export interface PayoutEntry {
+  place: number
+  playerId: string
+  playerName: string
+  totalScore: number
+  payout: number
+  isTied: boolean
+  pendingPuttOff: boolean
+}
+
+export interface DivisionPayout {
+  divisionId: string
+  divisionCode: string
+  divisionName: string
+  entryFee: number
+  sortOrder: number
+  checkedInCount: number
+  paidCount: number
+  pool: number
+  percentages: number[]
+  payouts: PayoutEntry[]
+}
+
+export interface PayoutsResponse {
+  tieBreakerMode: 'SPLIT' | 'PUTT_OFF'
+  divisions: DivisionPayout[]
 }
 
 export interface CardPlayer {
