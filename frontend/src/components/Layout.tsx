@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Outlet, NavLink, Link } from 'react-router-dom'
+import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { authStore, useAuth } from '../store/auth'
 import { api } from '../api/client'
@@ -12,6 +12,9 @@ const navLinks = [
 export default function Layout() {
   const { user, isAuthenticated, isAdmin } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
+  const navigate = useNavigate()
+
+  function signOut() { authStore.clearAuth(); navigate('/') }
 
   // Refresh user profile on mount so stale localStorage sessions pick up
   // newly created player profiles without requiring a fresh login.
@@ -84,7 +87,7 @@ export default function Layout() {
                       Admin
                     </NavLink>
                   )}
-                  <button onClick={() => authStore.clearAuth()} className="text-brand-200 hover:text-white text-xs">
+                  <button onClick={signOut} className="text-brand-200 hover:text-white text-xs">
                     Sign out
                   </button>
                 </>
@@ -145,7 +148,7 @@ export default function Layout() {
                     Admin Panel
                   </NavLink>
                 )}
-                <button onClick={() => { authStore.clearAuth(); close() }}
+                <button onClick={() => { signOut(); close() }}
                   className="block w-full text-left py-3 text-sm text-brand-300 border-b border-brand-700">
                   Sign out
                 </button>

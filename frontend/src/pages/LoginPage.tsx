@@ -82,9 +82,12 @@ export default function LoginPage() {
         {mode === 'password' ? (
           <form onSubmit={handlePasswordLogin} className="space-y-4">
             <div>
-              <label className="label">Email address</label>
+              <label htmlFor="email" className="label">Email address</label>
               <input
+                id="email"
+                name="email"
                 type="email"
+                autoComplete="email"
                 required
                 value={email}
                 onChange={e => setEmail(e.target.value)}
@@ -93,9 +96,12 @@ export default function LoginPage() {
               />
             </div>
             <div>
-              <label className="label">Password</label>
+              <label htmlFor="password" className="label">Password</label>
               <input
+                id="password"
+                name="password"
                 type="password"
+                autoComplete="current-password"
                 required
                 value={password}
                 onChange={e => setPassword(e.target.value)}
@@ -119,9 +125,12 @@ export default function LoginPage() {
         ) : (
           <form onSubmit={handleMagicLink} className="space-y-4">
             <div>
-              <label className="label">Email address</label>
+              <label htmlFor="email" className="label">Email address</label>
               <input
+                id="email"
+                name="email"
                 type="email"
+                autoComplete="email"
                 required
                 value={email}
                 onChange={e => setEmail(e.target.value)}
@@ -130,11 +139,14 @@ export default function LoginPage() {
               />
             </div>
             <div>
-              <label className="label">
+              <label htmlFor="name" className="label">
                 Your name <span className="text-gray-400 font-normal">(required for new accounts)</span>
               </label>
               <input
+                id="name"
+                name="name"
                 type="text"
+                autoComplete="name"
                 value={name}
                 onChange={e => setName(e.target.value)}
                 placeholder="Jane Smith"

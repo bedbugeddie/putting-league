@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Outlet, NavLink, Link, useLocation } from 'react-router-dom'
+import { Outlet, NavLink, Link, useLocation, useNavigate } from 'react-router-dom'
 import { authStore } from '../store/auth'
 import { api } from '../api/client'
 
@@ -14,6 +14,9 @@ const navItems = [
 export default function AdminLayout() {
   const [menuOpen, setMenuOpen] = useState(false)
   const location = useLocation()
+  const navigate = useNavigate()
+
+  function signOut() { authStore.clearAuth(); navigate('/') }
 
   // Close menu on navigation
   useEffect(() => { setMenuOpen(false) }, [location.pathname])
@@ -56,7 +59,7 @@ export default function AdminLayout() {
 
             {/* Desktop: sign out */}
             <button
-              onClick={() => authStore.clearAuth()}
+              onClick={signOut}
               className="hidden sm:block text-brand-300 hover:text-white text-sm"
             >
               Sign out
@@ -95,7 +98,7 @@ export default function AdminLayout() {
               </NavLink>
             ))}
             <button
-              onClick={() => authStore.clearAuth()}
+              onClick={signOut}
               className="block w-full text-left py-3 text-sm text-brand-300 border-b border-forest-border"
             >
               Sign out
