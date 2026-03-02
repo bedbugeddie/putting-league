@@ -44,6 +44,18 @@
 }
 
 /*
+ * ── Plain (non-dark-prefixed) background remapping ────────────────────────────
+ * bg-gray-50/100/200 without a dark: variant render as near-white in dark mode.
+ * Remap them to forest palette here. Elements that ALSO carry an explicit
+ * dark:bg-* class are unaffected because the dark:bg remapping section below
+ * comes later in the file and wins the cascade.
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+.dark .bg-gray-50  { background-color: #243b29; }
+.dark .bg-gray-100 { background-color: #243b29; }
+.dark .bg-gray-200 { background-color: #2d4a35; }
+
+/*
  * ── Dark-mode gray remapping ──────────────────────────────────────────────────
  * These selectors override Tailwind's generated dark:bg-gray-*, dark:text-gray-*,
  * etc. classes so every component automatically uses the forest/emerald palette
