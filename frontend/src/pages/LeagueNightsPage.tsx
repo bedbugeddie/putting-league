@@ -17,23 +17,23 @@ export default function LeagueNightsPage() {
   const live = (data?.leagueNights ?? []).filter(n => n.status === 'IN_PROGRESS')
 
   return (
-    /* Hero wrapper: bleeds to viewport edges on mobile, normal flow on sm+ */
-    <div className="home-hero -mx-4 -mt-6 sm:mx-0 sm:mt-0 min-h-[calc(100svh-3.5rem)] sm:min-h-0 relative">
-      {/* Dark scrim – mobile only, improves text readability over the photo */}
-      <div className="sm:hidden absolute inset-0 bg-black/50 dark:bg-black/60 pointer-events-none" />
+    /* Hero wrapper: full-bleed on all screen sizes */
+    <div className="home-hero -mx-4 sm:-mx-6 lg:-mx-8 -mt-6 min-h-[calc(100svh-3.5rem)] relative">
+      {/* Dark scrim – lighter on desktop, heavier on mobile */}
+      <div className="absolute inset-0 bg-black/30 sm:bg-black/20 dark:bg-black/50 pointer-events-none" />
 
       {/* Content – padding restored to match Layout's removed margins */}
-      <div className="relative px-4 pt-6 sm:p-0">
+      <div className="relative px-4 sm:px-6 lg:px-8 pt-6 pb-8">
         <div className="flex justify-center mb-8">
           <img
             src="/mvpl.png"
             alt="Merrimack Valley Putting League"
-            className="w-64 sm:w-80 [filter:brightness(0)_invert(100%)] sm:[filter:brightness(0)_invert(14%)_sepia(100%)_saturate(500%)_hue-rotate(350deg)_brightness(80%)] sm:dark:[filter:brightness(0)_invert(78%)_sepia(55%)_saturate(150%)_hue-rotate(350deg)]"
+            className="w-64 sm:w-80 [filter:brightness(0)_invert(100%)]"
           />
         </div>
 
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-white sm:text-gray-900 sm:dark:text-brand-50">Current Event</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">Current Event</h1>
         </div>
 
         {live.length === 0 && (

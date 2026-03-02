@@ -115,12 +115,18 @@
 .dark .border-gray-200 { border-color: #2d4a35; }
 .dark .border-gray-100 { border-color: #243b29; }
 
-/* ── Main page hero background (mobile only) ─────────────────────────────── */
+/* ── Main page hero background ───────────────────────────────────────────── */
+/* Desktop: anchor to the right so the basket stays visible when the window
+   narrows (cropping happens on the left edge). */
+.home-hero {
+  background-image: url('/hero-bg.jpg');
+  background-size: cover;
+  background-position: right center;
+  background-repeat: no-repeat;
+}
+/* Mobile: re-center on the basket directly. */
 @media (max-width: 639px) {
   .home-hero {
-    background-image: url('/hero-bg.jpg');
-    background-size: cover;
     background-position: 65% 45%;
-    background-repeat: no-repeat;
   }
 }
