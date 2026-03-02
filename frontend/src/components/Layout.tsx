@@ -67,7 +67,7 @@ export default function Layout() {
     `block py-3 text-sm border-b border-brand-700 dark:border-forest-border ${isActive ? 'font-semibold text-white dark:text-brand-300' : 'text-brand-100 dark:text-brand-200'}`
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="site-hero min-h-screen flex flex-col">
       {/* ── Nav ── */}
       <nav className="bg-brand-700 text-white shadow-md dark:bg-forest-surface dark:shadow-none dark:border-b dark:border-forest-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
