@@ -9,6 +9,7 @@ const navItems = [
   { to: '/admin/league-nights', label: 'League Nights' },
   { to: '/admin/divisions', label: 'Divisions' },
   { to: '/admin/players', label: 'Players' },
+  { to: '/admin/financials', label: 'Financials' },
 ]
 
 export default function AdminLayout() {

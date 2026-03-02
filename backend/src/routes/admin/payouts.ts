@@ -3,6 +3,10 @@ import { prisma } from '../../lib/prisma.js'
 import { requireAdmin } from '../../middleware/auth.js'
 import { calcLeagueNightTotals } from '../../services/scoring.js'
 
+/** Fixed deductions from every paid entry before the prize pool is calculated. */
+export const HOUSE_PER_ENTRY = 1  // $1 → house / operational
+export const EOY_PER_ENTRY   = 2  // $2 → end-of-year prize pool
+
 // Payout percentages indexed by tier:
 //   [0] = 0 players, [1] = 1-3, [2] = 4-6, [3] = 7-9,
 //   [4] = 10-12, [5] = 13-15, [6] = 16+
@@ -214,9 +218,12 @@ export async function payoutRoutes(app: FastifyInstance) {
 
     const divisions = []
     for (const [, div] of divMap.entries()) {
-      const paidCount = div.paidPlayerIds.size
-      const pool = Math.round(paidCount * div.entryFee)
-      const percentages = getPayoutPercentages(paidCount)
+      const paidCount       = div.paidPlayerIds.size
+      const grossCollected  = Math.round(paidCount * div.entryFee)
+      const houseTotal      = paidCount * HOUSE_PER_ENTRY
+      const eoyTotal        = paidCount * EOY_PER_ENTRY
+      const pool            = Math.max(0, grossCollected - houseTotal - eoyTotal)
+      const percentages     = getPayoutPercentages(paidCount)
 
       // Only rank paid players for payout purposes
       const rankedPlayers = allTotals
@@ -239,6 +246,9 @@ export async function payoutRoutes(app: FastifyInstance) {
         sortOrder: div.sortOrder,
         checkedInCount: div.checkedInCount,
         paidCount,
+        grossCollected,
+        houseTotal,
+        eoyTotal,
         pool,
         percentages,
         payouts,
@@ -288,8 +298,9 @@ export async function payoutRoutes(app: FastifyInstance) {
     const payoutMap = new Map<string, { payout: number; place: number; pool: number; isTied: boolean; pendingPuttOff: boolean }>()
 
     for (const [divId, { entryFee, playerIds }] of paidByDivision.entries()) {
-      const paidCount = playerIds.size
-      const pool = Math.round(paidCount * entryFee)
+      const paidCount      = playerIds.size
+      const grossCollected = Math.round(paidCount * entryFee)
+      const pool           = Math.max(0, grossCollected - paidCount * HOUSE_PER_ENTRY - paidCount * EOY_PER_ENTRY)
       const rankedPlayers = allTotals
         .filter(t => playerIds.has(t.playerId))
         .sort((a, b) => b.totalScore - a.totalScore)
@@ -305,5 +316,56 @@ export async function payoutRoutes(app: FastifyInstance) {
     }
 
     return reply.send({ payouts: Object.fromEntries(payoutMap.entries()) })
+  })
+
+  // Season-level financial summary: house, EOY, and payout pool totals per night + season aggregate
+  app.get('/admin/seasons/active/financials', { preHandler: requireAdmin }, async (_req, reply) => {
+    const season = await prisma.season.findFirst({
+      where: { isActive: true },
+      select: { id: true, name: true },
+    })
+    if (!season) return reply.send({ season: null, nights: [], totals: { paidCount: 0, grossCollected: 0, houseTotal: 0, eoyTotal: 0, payoutPool: 0 } })
+
+    // Fetch all league nights for the season (ordered chronologically)
+    const nights = await prisma.leagueNight.findMany({
+      where: { seasonId: season.id },
+      select: { id: true, date: true, status: true },
+      orderBy: { date: 'asc' },
+    })
+
+    // Single query: all paid check-ins for the season
+    const paidCheckIns = await prisma.checkIn.findMany({
+      where: { leagueNight: { seasonId: season.id }, hasPaid: true },
+      select: { leagueNightId: true, player: { select: { division: { select: { entryFee: true } } } } },
+    })
+
+    // Aggregate by night
+    const nightAgg = new Map<string, { paidCount: number; grossCollected: number }>()
+    for (const ci of paidCheckIns) {
+      const fee = ci.player.division?.entryFee ?? 0
+      const cur = nightAgg.get(ci.leagueNightId) ?? { paidCount: 0, grossCollected: 0 }
+      nightAgg.set(ci.leagueNightId, { paidCount: cur.paidCount + 1, grossCollected: cur.grossCollected + fee })
+    }
+
+    const nightResults = nights.map(n => {
+      const agg          = nightAgg.get(n.id) ?? { paidCount: 0, grossCollected: 0 }
+      const houseTotal   = agg.paidCount * HOUSE_PER_ENTRY
+      const eoyTotal     = agg.paidCount * EOY_PER_ENTRY
+      const payoutPool   = Math.max(0, agg.grossCollected - houseTotal - eoyTotal)
+      return { nightId: n.id, date: n.date, status: n.status, paidCount: agg.paidCount, grossCollected: agg.grossCollected, houseTotal, eoyTotal, payoutPool }
+    })
+
+    const totals = nightResults.reduce(
+      (acc, n) => ({
+        paidCount:      acc.paidCount      + n.paidCount,
+        grossCollected: acc.grossCollected + n.grossCollected,
+        houseTotal:     acc.houseTotal     + n.houseTotal,
+        eoyTotal:       acc.eoyTotal       + n.eoyTotal,
+        payoutPool:     acc.payoutPool     + n.payoutPool,
+      }),
+      { paidCount: 0, grossCollected: 0, houseTotal: 0, eoyTotal: 0, payoutPool: 0 },
+    )
+
+    return reply.send({ season, nights: nightResults, totals })
   })
 }

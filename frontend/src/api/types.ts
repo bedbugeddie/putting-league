@@ -166,7 +166,10 @@ export interface DivisionPayout {
   sortOrder: number
   checkedInCount: number
   paidCount: number
-  pool: number
+  grossCollected: number  // paidCount × entryFee
+  houseTotal: number      // paidCount × $1
+  eoyTotal: number        // paidCount × $2 (end-of-year pool)
+  pool: number            // grossCollected - houseTotal - eoyTotal
   percentages: number[]
   payouts: PayoutEntry[]
 }
@@ -174,6 +177,33 @@ export interface DivisionPayout {
 export interface PayoutsResponse {
   tieBreakerMode: 'SPLIT' | 'PUTT_OFF'
   divisions: DivisionPayout[]
+}
+
+// ── Season financials ──────────────────────────────────────────────────────
+
+export interface NightFinancials {
+  nightId: string
+  date: string
+  status: string
+  paidCount: number
+  grossCollected: number
+  houseTotal: number
+  eoyTotal: number
+  payoutPool: number
+}
+
+export interface SeasonFinancialsTotals {
+  paidCount: number
+  grossCollected: number
+  houseTotal: number
+  eoyTotal: number
+  payoutPool: number
+}
+
+export interface SeasonFinancialsResponse {
+  season: { id: string; name: string } | null
+  nights: NightFinancials[]
+  totals: SeasonFinancialsTotals
 }
 
 export interface CardPlayer {

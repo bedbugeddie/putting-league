@@ -116,11 +116,11 @@ export default function AdminCheckInPage() {
     : N < minPlayersPerCard ? 1
     : Math.min(Math.floor(N / minPlayersPerCard), totalHoles)
 
-  const paidCount = checkIns.filter(c => c.hasPaid).length
-  const totalPool = checkIns.reduce((sum, c) => {
-    if (!c.hasPaid) return sum
-    return sum + (c.player.division?.entryFee ?? 0)
-  }, 0)
+  const paidCount   = checkIns.filter(c => c.hasPaid).length
+  const totalGross  = checkIns.reduce((sum, c) => c.hasPaid ? sum + (c.player.division?.entryFee ?? 0) : sum, 0)
+  const totalHouse  = paidCount * 1   // $1/entry
+  const totalEoy    = paidCount * 2   // $2/entry
+  const totalPool   = Math.max(0, totalGross - totalHouse - totalEoy)
 
   // Group all players by division for the check-in list
   const byDivision = new Map<string, Player[]>()
@@ -138,7 +138,9 @@ export default function AdminCheckInPage() {
         <h1 className="text-xl sm:text-2xl font-bold">Check-In & Cards</h1>
         <span className="badge bg-brand-100 text-brand-800">{checkIns.length} checked in</span>
         {paidCount > 0 && (
-          <span className="badge bg-green-100 text-green-800">{paidCount} paid · ${totalPool.toFixed(0)} pool</span>
+          <span className="badge bg-green-100 text-green-800">
+            {paidCount} paid · ${totalGross} gross · ${totalHouse} house · ${totalEoy} EOY · ${totalPool} pool
+          </span>
         )}
       </div>
 

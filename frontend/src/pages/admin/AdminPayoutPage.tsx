@@ -80,8 +80,11 @@ export default function AdminPayoutPage() {
   const night = nightData?.leagueNight
   const { tieBreakerMode, divisions = [] } = data ?? {}
 
-  const totalPool = divisions.reduce((sum, d) => sum + d.pool, 0)
-  const totalPaid = divisions.reduce((sum, d) => sum + d.paidCount, 0)
+  const totalPaid         = divisions.reduce((sum, d) => sum + d.paidCount, 0)
+  const totalGross        = divisions.reduce((sum, d) => sum + d.grossCollected, 0)
+  const totalHouse        = divisions.reduce((sum, d) => sum + d.houseTotal, 0)
+  const totalEoy          = divisions.reduce((sum, d) => sum + d.eoyTotal, 0)
+  const totalPool         = divisions.reduce((sum, d) => sum + d.pool, 0)
 
   return (
     <div className="space-y-6">
@@ -104,7 +107,19 @@ export default function AdminPayoutPage() {
         <div className="card bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
           <div className="flex flex-wrap gap-6">
             <div>
-              <p className="text-xs text-green-700 dark:text-green-400 font-medium uppercase tracking-wide">Total Pool</p>
+              <p className="text-xs text-green-700 dark:text-green-400 font-medium uppercase tracking-wide">Gross Collected</p>
+              <p className="text-3xl font-bold text-green-800 dark:text-green-300">${totalGross}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">House</p>
+              <p className="text-2xl font-bold text-gray-700 dark:text-gray-300">${totalHouse}</p>
+            </div>
+            <div>
+              <p className="text-xs text-blue-600 dark:text-blue-400 font-medium uppercase tracking-wide">End of Year</p>
+              <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">${totalEoy}</p>
+            </div>
+            <div>
+              <p className="text-xs text-green-700 dark:text-green-400 font-medium uppercase tracking-wide">Payout Pool</p>
               <p className="text-3xl font-bold text-green-800 dark:text-green-300">${totalPool}</p>
             </div>
             <div>
@@ -112,7 +127,7 @@ export default function AdminPayoutPage() {
               <p className="text-2xl font-bold text-green-800 dark:text-green-300">{totalPaid}</p>
             </div>
             <div>
-              <p className="text-xs text-green-700 dark:text-green-400 font-medium uppercase tracking-wide">Tie-Breaker Mode</p>
+              <p className="text-xs text-green-700 dark:text-green-400 font-medium uppercase tracking-wide">Tie-Breaker</p>
               <p className="text-lg font-semibold text-green-800 dark:text-green-300">{tieBreakerMode === 'SPLIT' ? 'Split ties' : 'Putt-off'}</p>
             </div>
           </div>
@@ -135,14 +150,19 @@ export default function AdminPayoutPage() {
                   <span className="text-gray-600 dark:text-gray-400">{div.divisionName}</span>
                 </div>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  ${div.entryFee.toFixed(2)} entry fee · {div.checkedInCount} checked in · {div.paidCount} paid
+                  ${div.entryFee.toFixed(2)} entry · {div.checkedInCount} checked in · {div.paidCount} paid
                 </p>
+                {div.paidCount > 0 && (
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    ${div.grossCollected} gross &rarr; <span className="text-gray-500">${div.houseTotal} house</span> · <span className="text-blue-500">${div.eoyTotal} EOY</span> · <span className="text-green-600">${div.pool} payout</span>
+                  </p>
+                )}
               </div>
               <div className="text-right">
                 <p className="text-2xl font-bold text-green-700 dark:text-green-400">
                   ${div.pool}
                 </p>
-                <p className="text-xs text-gray-500">prize pool</p>
+                <p className="text-xs text-gray-500">payout pool</p>
               </div>
             </div>
 
