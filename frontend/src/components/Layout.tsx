@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { authStore, useAuth } from '../store/auth'
 import { api } from '../api/client'
+import PullToRefresh from './PullToRefresh'
 
 const navLinks = [
   { to: '/', label: 'Current Event', end: true },
@@ -13,6 +14,12 @@ export default function Layout() {
   const { user, isAuthenticated, isAdmin } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+
+  const handleRefresh = useCallback(
+    () => queryClient.invalidateQueries(),
+    [queryClient],
+  )
 
   function signOut() { authStore.clearAuth(); navigate('/') }
 
@@ -164,9 +171,11 @@ export default function Layout() {
       </nav>
 
       {/* ── Content ── */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <Outlet />
-      </main>
+      <PullToRefresh onRefresh={handleRefresh}>
+        <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <Outlet />
+        </main>
+      </PullToRefresh>
 
       <footer className="bg-brand-50 border-t border-brand-100 py-3 text-center text-xs text-gray-400 dark:bg-forest dark:border-forest-border dark:text-brand-300">
         Merrimack Valley Putting League
