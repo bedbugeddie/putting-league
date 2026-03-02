@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
+import { useState } from 'react'
 import { api } from '../api/client'
 import { useAuth } from '../store/auth'
-import type { PlayerStats, LeagueNight, Card, Score, Position } from '../api/types'
+import type { PlayerStats, LeagueNight, Card, Score, Position, Player } from '../api/types'
 import Spinner from '../components/ui/Spinner'
 import { format } from 'date-fns'
 
@@ -16,6 +17,120 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
       <p className="text-3xl font-bold text-brand-700">{value}</p>
       <p className="text-sm font-medium text-gray-700 mt-1">{label}</p>
       {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
+    </div>
+  )
+}
+
+// ── Live division standings ────────────────────────────────────────────────────
+
+function LiveDivisionStandings({ night, scores, myPlayerId, myDivisionId }: {
+  night: LeagueNight
+  scores: Score[]
+  myPlayerId: string
+  myDivisionId: string
+}) {
+  const rounds = [...(night.rounds ?? [])].sort((a, b) => a.number - b.number)
+
+  // Aggregate per-player totals, only for players in my division
+  const playerMap = new Map<string, {
+    player: Player
+    roundTotals: number[]
+    total: number
+  }>()
+
+  for (const s of scores) {
+    if (!s.player || s.player.divisionId !== myDivisionId) continue
+    if (!s.hole || !s.round) continue
+
+    if (!playerMap.has(s.playerId)) {
+      playerMap.set(s.playerId, {
+        player: s.player,
+        roundTotals: rounds.map(() => 0),
+        total: 0,
+      })
+    }
+
+    const entry = playerMap.get(s.playerId)!
+    const roundIdx = rounds.findIndex(r => r.id === s.round!.id)
+    if (roundIdx === -1) continue
+
+    // made + 1 bonus point for 3-for-3
+    const pts = s.made + (s.bonus ? 1 : 0)
+    entry.roundTotals[roundIdx] += pts
+    entry.total += pts
+  }
+
+  const rows = Array.from(playerMap.values()).sort((a, b) => b.total - a.total)
+
+  return (
+    <div className="card space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h2 className="text-lg font-semibold">Division Standings</h2>
+          <p className="text-xs text-gray-500 mt-0.5">
+            {format(new Date(night.date), 'EEEE, MMMM d, yyyy')} · Live
+          </p>
+        </div>
+        <Link
+          to={`/league-nights/${night.id}/leaderboard`}
+          className="btn-secondary text-xs py-1.5 px-3"
+        >
+          Full Leaderboard →
+        </Link>
+      </div>
+
+      {rows.length === 0 ? (
+        <p className="text-gray-500 text-sm py-2">No scores recorded yet for your division.</p>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-forest-border">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
+                <th className="text-left px-3 py-2 font-medium text-gray-500 text-xs w-8">#</th>
+                <th className="text-left px-3 py-2 font-medium text-gray-500 text-xs">Player</th>
+                {rounds.map(r => (
+                  <th key={r.id} className="px-3 py-2 font-medium text-gray-500 text-center text-xs whitespace-nowrap">
+                    R{r.number}{r.isComplete ? ' ✓' : ''}
+                  </th>
+                ))}
+                <th className="px-3 py-2 font-medium text-gray-500 text-right text-xs">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(({ player, roundTotals, total }, idx) => {
+                const isMe = player.id === myPlayerId
+                return (
+                  <tr
+                    key={player.id}
+                    className={`border-b border-gray-100 dark:border-gray-700 last:border-0 ${
+                      isMe ? 'bg-brand-50 dark:bg-brand-900/20' : ''
+                    }`}
+                  >
+                    <td className="px-3 py-2.5 text-gray-400 text-xs font-mono">{idx + 1}</td>
+                    <td className="px-3 py-2.5 whitespace-nowrap">
+                      <span className={`font-medium text-xs ${isMe ? 'text-brand-800 dark:text-brand-200' : ''}`}>
+                        {player.user.name}
+                        {isMe && <span className="ml-1 opacity-60">← you</span>}
+                      </span>
+                    </td>
+                    {roundTotals.map((rt, i) => (
+                      <td key={i} className="px-3 py-2.5 text-center text-xs text-gray-600 dark:text-gray-400">
+                        {rt > 0 ? rt : <span className="text-gray-300 dark:text-gray-600">—</span>}
+                      </td>
+                    ))}
+                    <td className="px-3 py-2.5 text-right">
+                      <span className={`text-base font-bold ${isMe ? 'text-brand-700 dark:text-brand-400' : 'text-gray-800 dark:text-gray-200'}`}>
+                        {total}
+                      </span>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }
@@ -196,6 +311,8 @@ function LiveScorecard({ night, myCard, scores, myPlayerId }: {
 export default function PlayerDashboardPage() {
   const { user } = useAuth()
   const playerId = user?.player?.id
+  const myDivisionId = user?.player?.divisionId ?? null
+  const [liveView, setLiveView] = useState<'division' | 'card'>('division')
 
   // Stats
   const { data: statsData, isLoading: statsLoading } = useQuery<{ stats: PlayerStats | null }>({
@@ -270,14 +387,53 @@ export default function PlayerDashboardPage() {
         <Link to="/profile" className="btn-secondary text-sm">My Profile</Link>
       </div>
 
-      {/* Live scorecard (only when there's an active night and the player is on a card) */}
-      {night && myCard && (
-        <LiveScorecard
-          night={night}
-          myCard={myCard}
-          scores={scores}
-          myPlayerId={playerId}
-        />
+      {/* Live section – shown when there's an active night and the player has a division or card */}
+      {night && (myCard || myDivisionId) && (
+        <div className="space-y-3">
+          {/* Tab toggle – only when both views are available */}
+          {myCard && myDivisionId && (
+            <div className="flex gap-1 bg-gray-100 dark:bg-forest-mid rounded-lg p-1 w-fit">
+              {(['division', 'card'] as const).map(view => (
+                <button
+                  key={view}
+                  onClick={() => setLiveView(view)}
+                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    liveView === view
+                      ? 'bg-white dark:bg-forest-border text-brand-700 dark:text-brand-300 shadow-sm'
+                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                  }`}
+                >
+                  {view === 'division' ? 'My Division' : 'My Card'}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Active view */}
+          {liveView === 'card' && myCard ? (
+            <LiveScorecard
+              night={night}
+              myCard={myCard}
+              scores={scores}
+              myPlayerId={playerId}
+            />
+          ) : myDivisionId ? (
+            <LiveDivisionStandings
+              night={night}
+              scores={scores}
+              myPlayerId={playerId}
+              myDivisionId={myDivisionId}
+            />
+          ) : myCard ? (
+            /* Fallback: no division set, just show card */
+            <LiveScorecard
+              night={night}
+              myCard={myCard}
+              scores={scores}
+              myPlayerId={playerId}
+            />
+          ) : null}
+        </div>
       )}
 
       {/* Career stats */}
