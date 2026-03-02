@@ -85,3 +85,20 @@
 /* Divide (table/list dividers) */
 .dark .dark\:divide-gray-700 > :not([hidden]) ~ :not([hidden]) { border-color: #2d4a35; }
 .dark .dark\:divide-gray-800 > :not([hidden]) ~ :not([hidden]) { border-color: #1A2E1F; }
+
+/*
+ * ── Plain (non-dark-prefixed) gray remapping ──────────────────────────────
+ * Components that use text-gray-* or border-gray-* without a dark: variant
+ * would render dark-on-dark. These rules remap them to the emerald palette.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+/* Text */
+.dark .text-gray-900 { color: #ecfdf5; }
+.dark .text-gray-800 { color: #ecfdf5; }
+.dark .text-gray-700 { color: #d1fae5; }
+.dark .text-gray-600 { color: #a7f3d0; }
+.dark .text-gray-500 { color: #a7f3d0; }
+
+/* Borders (table rows, dividers) */
+.dark .border-gray-200 { border-color: #2d4a35; }
+.dark .border-gray-100 { border-color: #243b29; }
