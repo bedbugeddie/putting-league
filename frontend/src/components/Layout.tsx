@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { authStore, useAuth } from '../store/auth'
 import { api } from '../api/client'
 import PullToRefresh from './PullToRefresh'
+import Avatar from './ui/Avatar'
 
 const navLinks = [
   { to: '/', label: 'Current Event', end: true },
@@ -84,8 +85,9 @@ export default function Layout() {
                     Dashboard
                   </NavLink>
                   <NavLink to="/profile"
-                    className={({ isActive }) => isActive ? 'font-semibold underline' : 'hover:underline'}>
-                    My Profile
+                    className={({ isActive }) => `flex items-center gap-1.5 ${isActive ? 'font-semibold underline' : 'hover:underline'}`}>
+                    <Avatar name={user?.name ?? ''} avatarDataUrl={user?.avatarDataUrl} size="sm" />
+                    <span>My Profile</span>
                   </NavLink>
                   {isAdmin && (
                     <NavLink to="/admin"
@@ -105,7 +107,9 @@ export default function Layout() {
             <div className="flex sm:hidden items-center gap-3">
               {isAuthenticated ? (
                 <>
-                  <span className="text-brand-200 text-xs truncate max-w-[100px]">{user?.name}</span>
+                  <Link to="/profile" onClick={close}>
+                    <Avatar name={user?.name ?? ''} avatarDataUrl={user?.avatarDataUrl} size="sm" />
+                  </Link>
                   <button
                     onClick={() => setMenuOpen(o => !o)}
                     className="p-2 rounded hover:bg-brand-600 transition-colors"

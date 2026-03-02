@@ -9,6 +9,7 @@ export interface User {
   email: string
   name: string
   isAdmin: boolean
+  avatarDataUrl?: string | null
   player?: Player
 }
 

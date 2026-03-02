@@ -1,11 +1,120 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../api/client'
 import { useAuth } from '../store/auth'
 import { authStore } from '../store/auth'
 import type { PlayerStats, NightHistory } from '../api/types'
 import Spinner from '../components/ui/Spinner'
+import Avatar from '../components/ui/Avatar'
 import toast from 'react-hot-toast'
+
+// ── Avatar upload form ────────────────────────────────────────────────────────
+
+/** Compress any image to a 200×200 JPEG data URL via Canvas (client-side). */
+function compressImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      const SIZE = 200
+      const canvas = document.createElement('canvas')
+      canvas.width = SIZE
+      canvas.height = SIZE
+      const ctx = canvas.getContext('2d')!
+      // Cover-fit: crop to square from center
+      const ratio = Math.max(SIZE / img.width, SIZE / img.height)
+      const w = img.width * ratio
+      const h = img.height * ratio
+      ctx.drawImage(img, (SIZE - w) / 2, (SIZE - h) / 2, w, h)
+      resolve(canvas.toDataURL('image/jpeg', 0.85))
+    }
+    img.onerror = reject
+    img.src = url
+  })
+}
+
+function AvatarUploadForm() {
+  const { user } = useAuth()
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [loading, setLoading] = useState(false)
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    // Reset input so same file can be re-selected
+    e.target.value = ''
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file.')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const dataUrl = await compressImage(file)
+      const { token, user: fresh } = await api.patch<{ token: string; user: any }>(
+        '/auth/avatar', { dataUrl }
+      )
+      authStore.setAuth(token, fresh)
+      toast.success('Profile photo updated!')
+    } catch (err: any) {
+      toast.error(err.message ?? 'Failed to upload photo')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleRemove() {
+    setLoading(true)
+    try {
+      const { token, user: fresh } = await api.patch<{ token: string; user: any }>(
+        '/auth/avatar', { dataUrl: null }
+      )
+      authStore.setAuth(token, fresh)
+      toast.success('Profile photo removed.')
+    } catch (err: any) {
+      toast.error(err.message ?? 'Failed to remove photo')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="card">
+      <h2 className="text-lg font-semibold mb-4">Profile Photo</h2>
+      <div className="flex items-center gap-5">
+        <Avatar name={user?.name ?? '?'} avatarDataUrl={user?.avatarDataUrl} size="lg" />
+        <div className="space-y-2">
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFile}
+          />
+          <button
+            className="btn-primary text-sm"
+            disabled={loading}
+            onClick={() => fileRef.current?.click()}
+          >
+            {loading ? 'Uploading…' : 'Upload Photo'}
+          </button>
+          {user?.avatarDataUrl && (
+            <button
+              className="btn-secondary text-sm block"
+              disabled={loading}
+              onClick={handleRemove}
+            >
+              Remove Photo
+            </button>
+          )}
+          <p className="text-xs text-gray-400">JPG, PNG or WebP. Will be cropped to square.</p>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // ── Account info form ─────────────────────────────────────────────────────────
 
@@ -180,6 +289,7 @@ export default function ProfilePage() {
     <div className="space-y-6 max-w-2xl">
       <h1 className="text-3xl font-bold">My Profile</h1>
 
+      <AvatarUploadForm />
       <AccountForm />
       <PasswordForm />
 

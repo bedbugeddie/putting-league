@@ -168,6 +168,29 @@ export async function authRoutes(app: FastifyInstance) {
     return reply.send(await buildAuthResponse(app, req.user!.userId))
   })
 
+  // PATCH /auth/avatar – upload or clear profile photo (base64 data URL)
+  app.patch('/auth/avatar', { preHandler: requireAuth }, async (req, reply) => {
+    const { dataUrl } = z.object({
+      dataUrl: z.string()
+        .refine(v => v === '' || /^data:image\/(jpeg|png|webp);base64,/.test(v), {
+          message: 'Must be a valid image data URL (jpeg/png/webp)',
+        })
+        .nullable(),
+    }).parse(req.body)
+
+    // Enforce a 200 KB ceiling on the stored data URL
+    if (dataUrl && dataUrl.length > 200_000) {
+      return reply.status(400).send({ error: 'Image too large. Please use an image under 150 KB.' })
+    }
+
+    await prisma.user.update({
+      where: { id: req.user!.userId },
+      data: { avatarDataUrl: dataUrl || null },
+    })
+
+    return reply.send(await buildAuthResponse(app, req.user!.userId))
+  })
+
   // PATCH /players/me – set the current user's division
   app.patch('/players/me', { preHandler: requireAuth }, async (req, reply) => {
     const { divisionId } = z.object({ divisionId: z.string() }).parse(req.body)
