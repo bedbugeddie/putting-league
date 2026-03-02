@@ -25,6 +25,7 @@ model User {
   tokens                 MagicLinkToken[]
   player                 Player?
   scorekeeperAssignments ScorekeeperAssignment[]
+  scoreAuditLogs         ScoreAuditLog[]
 }
 
 model MagicLinkToken {
@@ -99,6 +100,7 @@ model LeagueNight {
   puttOffs               PuttOff[]
   checkIns               CheckIn[]
   cards                  Card[]
+  scoreAuditLogs         ScoreAuditLog[]
 }
 
 enum LeagueStatus {
@@ -200,12 +202,35 @@ model Score {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
+  auditLogs  ScoreAuditLog[]
+
   @@unique([playerId, holeId, roundId, position])
 }
 
 enum Position {
   SHORT
   LONG
+}
+
+// ─── Score Audit Log ───────────────────────────────────────────────────────────
+
+model ScoreAuditLog {
+  id            String      @id @default(cuid())
+  leagueNightId String
+  leagueNight   LeagueNight @relation(fields: [leagueNightId], references: [id], onDelete: Cascade)
+  scoreId       String
+  score         Score       @relation(fields: [scoreId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  // Denormalized so audit records stay readable even if underlying data changes
+  userName      String
+  playerName    String
+  holeNum       Int
+  roundNum      Int
+  position      Position
+  prevMade      Int?        // null = first-time entry (no prior value)
+  newMade       Int
+  createdAt     DateTime    @default(now())
 }
 
 // ─── Scorekeeper Assignments ───────────────────────────────────────────────────

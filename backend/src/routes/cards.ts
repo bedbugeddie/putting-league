@@ -80,13 +80,13 @@ export async function cardRoutes(app: FastifyInstance) {
     await prisma.card.deleteMany({ where: { leagueNightId: id } })
 
     const checkIns = await prisma.checkIn.findMany({
-      where: { leagueNightId: id },
+      where: { leagueNightId: id, hasPaid: true },
       include: { player: { include: { user: true, division: true } } },
       orderBy: { player: { user: { name: 'asc' } } },
     })
 
     if (checkIns.length === 0) {
-      return reply.status(400).send({ error: 'No checked-in players to generate cards from' })
+      return reply.status(400).send({ error: 'No paid players to generate cards from' })
     }
 
     const night = await prisma.leagueNight.findUnique({

@@ -285,7 +285,7 @@ function FinishView({
 
 export default function ScoringPage() {
   const { id } = useParams<{ id: string }>()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const cardIdParam = searchParams.get('card')
   const queryClient = useQueryClient()
   const { isAdmin, user } = useAuth()
@@ -406,6 +406,17 @@ export default function ScoringPage() {
   const scoreMap = new Map<ScoreKey, Score>()
   for (const s of existingScores) {
     scoreMap.set(`${s.playerId}::${s.holeId}::${s.roundId}::${s.position}` as ScoreKey, s)
+  }
+
+  function switchCard(newCardId: string) {
+    setHoleIndex(0)
+    setRoundIndex(0)
+    setShowSummary(false)
+    setShowFinish(false)
+    autoPositioned.current = false
+    setLocalOverrides(new Map())
+    setVisitedHoles(new Set())
+    setSearchParams(newCardId ? { card: newCardId } : {})
   }
 
   async function handleScoreChange(
@@ -530,15 +541,28 @@ export default function ScoringPage() {
       {/* Sticky header */}
       <div className="sticky top-0 z-10 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 bg-gray-50 border-b border-gray-200 dark:bg-gray-900 dark:border-gray-700">
         <div className="flex items-center justify-between mb-2">
-          <div>
-            <h1 className="text-lg sm:text-xl font-bold">
-              {activeCard ? activeCard.name : 'Score Entry'}
-            </h1>
+          <div className="min-w-0 flex-1">
+            {isAdmin && cards.length > 1 ? (
+              <select
+                value={cardIdParam ?? ''}
+                onChange={e => switchCard(e.target.value)}
+                className="input text-sm font-semibold py-1 px-2 h-auto w-auto max-w-[180px]"
+              >
+                <option value="">All cards</option>
+                {cards.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            ) : (
+              <h1 className="text-lg sm:text-xl font-bold">
+                {activeCard ? activeCard.name : 'Score Entry'}
+              </h1>
+            )}
             {rounds.length > 1 && (
               <p className="text-xs text-gray-500 mt-0.5">Round {roundIndex + 1} of {rounds.length}</p>
             )}
           </div>
-          <div className="text-xs font-medium">
+          <div className="text-xs font-medium ml-3 shrink-0">
             {pendingSaves > 0
               ? <span className="text-gray-400">Saving…</span>
               : <span className="text-green-600 dark:text-green-400">✓ Saved</span>

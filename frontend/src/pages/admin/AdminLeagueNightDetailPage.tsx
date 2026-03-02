@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, Link } from 'react-router-dom'
 import { api } from '../../api/client'
-import type { LeagueNight, User, Card, Score } from '../../api/types'
+import type { LeagueNight, User, Card, Score, ScoreAuditLog } from '../../api/types'
 import StatusBadge from '../../components/ui/StatusBadge'
 import Spinner from '../../components/ui/Spinner'
 import toast from 'react-hot-toast'
@@ -35,6 +35,13 @@ export default function AdminLeagueNightDetailPage() {
     queryFn: () => api.get(`/league-nights/${id}/scores`),
     enabled: !!id,
     refetchInterval: 15_000,
+  })
+
+  const [showAudit, setShowAudit] = useState(false)
+  const { data: auditData } = useQuery<{ logs: ScoreAuditLog[] }>({
+    queryKey: ['score-audit', id],
+    queryFn: () => api.get(`/admin/league-nights/${id}/score-audit`),
+    enabled: !!id && showAudit,
   })
 
   const statusMut = useMutation({
@@ -215,6 +222,66 @@ export default function AdminLeagueNightDetailPage() {
             Add
           </button>
         </div>
+      </div>
+
+      {/* Score Audit Log */}
+      <div className="card">
+        <button
+          className="flex items-center justify-between w-full text-left"
+          onClick={() => setShowAudit(v => !v)}
+        >
+          <h2 className="text-lg font-semibold">Score Audit Log</h2>
+          <span className="text-gray-400 text-sm">{showAudit ? '▲ Hide' : '▼ Show'}</span>
+        </button>
+
+        {showAudit && (
+          <div className="mt-4 overflow-x-auto">
+            {!auditData ? (
+              <p className="text-gray-400 text-sm py-2">Loading…</p>
+            ) : auditData.logs.length === 0 ? (
+              <p className="text-gray-400 text-sm py-2">No score changes recorded yet.</p>
+            ) : (
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-gray-200 text-gray-500 text-left">
+                    <th className="py-2 pr-3 font-medium">Time</th>
+                    <th className="py-2 pr-3 font-medium">By</th>
+                    <th className="py-2 pr-3 font-medium">Player</th>
+                    <th className="py-2 pr-3 font-medium">H</th>
+                    <th className="py-2 pr-3 font-medium">R</th>
+                    <th className="py-2 pr-3 font-medium">Pos</th>
+                    <th className="py-2 pr-3 font-medium">Change</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {auditData.logs.map(log => (
+                    <tr key={log.id} className="border-b border-gray-100 last:border-0">
+                      <td className="py-1.5 pr-3 text-gray-500 whitespace-nowrap">
+                        {format(new Date(log.createdAt), 'MMM d h:mm:ss a')}
+                      </td>
+                      <td className="py-1.5 pr-3 font-medium">{log.userName}</td>
+                      <td className="py-1.5 pr-3">{log.playerName}</td>
+                      <td className="py-1.5 pr-3 text-gray-500">{log.holeNum}</td>
+                      <td className="py-1.5 pr-3 text-gray-500">{log.roundNum}</td>
+                      <td className="py-1.5 pr-3 text-gray-500">{log.position}</td>
+                      <td className="py-1.5 pr-3">
+                        {log.prevMade === null ? (
+                          <span className="text-green-600">+{log.newMade}</span>
+                        ) : log.prevMade === log.newMade ? (
+                          <span className="text-gray-400">{log.newMade} (no change)</span>
+                        ) : (
+                          <span className={log.newMade > log.prevMade ? 'text-green-600' : 'text-red-500'}>
+                            {log.prevMade} → {log.newMade}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

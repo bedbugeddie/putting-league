@@ -200,6 +200,21 @@ export interface NightHistory {
   bonuses: number
 }
 
+export interface ScoreAuditLog {
+  id: string
+  leagueNightId: string
+  scoreId: string
+  userId: string
+  userName: string
+  playerName: string
+  holeNum: number
+  roundNum: number
+  position: Position
+  prevMade: number | null  // null = first-time entry
+  newMade: number
+  createdAt: string
+}
+
 export interface NightHighlights {
   mostBonuses: { playerName: string; divisionCode: string; count: number } | null
   longestStreak: { playerName: string; divisionCode: string; streak: number } | null

@@ -129,6 +129,17 @@ export async function leagueNightRoutes(app: FastifyInstance) {
     return reply.status(204).send()
   })
 
+  // GET score audit log for a league night (admin only)
+  app.get('/admin/league-nights/:id/score-audit', { preHandler: requireAdmin }, async (req, reply) => {
+    const { id } = req.params as { id: string }
+    const logs = await prisma.scoreAuditLog.findMany({
+      where: { leagueNightId: id },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    })
+    return reply.send({ logs })
+  })
+
   // Get active league night
   app.get('/league-nights/active', async (_req, reply) => {
     const night = await prisma.leagueNight.findFirst({

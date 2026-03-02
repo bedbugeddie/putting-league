@@ -93,6 +93,7 @@ export function computeStationHole(stationIndex: number, roundNumber: number, to
 
 /**
  * Record a score (upsert). Also computes and stores bonus flag.
+ * Fires an async audit log entry after saving — does not block the response.
  */
 export async function upsertScore(params: {
   playerId: string
@@ -108,9 +109,41 @@ export async function upsertScore(params: {
 
   const bonus = made === 3
 
-  return prisma.score.upsert({
+  // Capture previous value before upsert so audit log can record old→new
+  const existing = await prisma.score.findUnique({
+    where: { playerId_holeId_roundId_position: { playerId, holeId, roundId, position } },
+    select: { made: true },
+  })
+
+  const score = await prisma.score.upsert({
     where: { playerId_holeId_roundId_position: { playerId, holeId, roundId, position } },
     create: { playerId, holeId, roundId, position, made, bonus, enteredBy },
     update: { made, bonus, enteredBy },
   })
+
+  // Write audit log asynchronously — score entry must not fail if audit write fails
+  Promise.all([
+    prisma.user.findUnique({ where: { id: enteredBy }, select: { name: true } }),
+    prisma.player.findUnique({ where: { id: playerId }, include: { user: { select: { name: true } } } }),
+    prisma.hole.findUnique({ where: { id: holeId }, select: { number: true } }),
+    prisma.round.findUnique({ where: { id: roundId }, select: { number: true, leagueNightId: true } }),
+  ]).then(([actorUser, player, hole, round]) => {
+    if (!actorUser || !player || !hole || !round) return
+    return prisma.scoreAuditLog.create({
+      data: {
+        leagueNightId: round.leagueNightId,
+        scoreId: score.id,
+        userId: enteredBy,
+        userName: actorUser.name,
+        playerName: player.user.name,
+        holeNum: hole.number,
+        roundNum: round.number,
+        position,
+        prevMade: existing?.made ?? null,
+        newMade: made,
+      },
+    })
+  }).catch(err => console.error('[audit] ScoreAuditLog write failed:', err))
+
+  return score
 }
