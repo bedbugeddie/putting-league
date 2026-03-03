@@ -211,10 +211,7 @@ function AccountForm() {
           </div>
         </div>
         <div>
-          <label className="label">
-            Suffix{' '}
-            <span className="text-gray-400 font-normal">(optional — e.g. Jr., Sr., II)</span>
-          </label>
+          <label className="label">Suffix</label>
           <input
             type="text"
             value={suffix}
@@ -225,10 +222,7 @@ function AccountForm() {
           />
         </div>
         <div>
-          <label className="label">
-            Mobile Phone{' '}
-            <span className="text-gray-400 font-normal">(US number, 10 digits)</span>
-          </label>
+          <label className="label">Mobile Phone</label>
           <input
             type="tel"
             value={phone}
