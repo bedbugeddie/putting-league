@@ -32,6 +32,15 @@ const updateProfileSchema = z.object({
   lastName:  z.string().min(0).max(60).optional(),
   suffix:    z.string().max(20).nullable().optional(),
   email:     z.string().email().optional(),
+  phone:     z.string()
+               .trim()
+               .nullable()
+               .optional()
+               .refine(val => {
+                 if (!val) return true
+                 const digits = val.replace(/\D/g, '')
+                 return digits.length === 10 || (digits.length === 11 && digits.startsWith('1'))
+               }, 'Please enter a valid 10-digit US phone number'),
 })
 
 /** Derive display name from parts when parts are provided. */
@@ -188,6 +197,7 @@ export async function authRoutes(app: FastifyInstance) {
       data: {
         ...nameUpdate,
         ...(body.email !== undefined ? { email: body.email } : {}),
+        ...(body.phone !== undefined ? { phone: body.phone } : {}),
       },
     })
 

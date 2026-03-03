@@ -28,6 +28,7 @@ model User {
   firstName      String?
   lastName       String?
   suffix         String?
+  phone          String?
   isAdmin        Boolean  @default(false)
   passwordHash   String?
   avatarDataUrl  String?

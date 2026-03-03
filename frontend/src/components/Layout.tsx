@@ -8,8 +8,9 @@ import type { LeagueNight } from '../api/types'
 import PullToRefresh from './PullToRefresh'
 import Avatar from './ui/Avatar'
 import MotdModal from './MotdModal'
+import PhoneNagModal from './PhoneNagModal'
 
-const navLinks = [
+const navLinks: { to: string; label: string; end?: boolean }[] = [
   { to: '/stats', label: 'Stats' },
 ]
 
@@ -320,6 +321,9 @@ export default function Layout() {
 
       {/* ── MOTD modal (shown once per session if an active message exists) ── */}
       <MotdModal />
+
+      {/* ── Phone nag modal (shown every session until user adds a phone number) ── */}
+      <PhoneNagModal />
 
       {/* ── Content ── */}
       <PullToRefresh onRefresh={handleRefresh}>

@@ -118,23 +118,39 @@ function AvatarUploadForm() {
 
 // ── Account info form ─────────────────────────────────────────────────────────
 
+/** Strip everything but digits from a phone string for comparison. */
+function digitsOnly(v: string) { return v.replace(/\D/g, '') }
+
+/** Returns true if the string is a valid 10- or 11-digit (with leading 1) US number. */
+function isValidPhone(v: string) {
+  const d = digitsOnly(v)
+  return d.length === 10 || (d.length === 11 && d.startsWith('1'))
+}
+
 function AccountForm() {
   const { user } = useAuth()
   const [firstName, setFirstName] = useState(user?.firstName ?? '')
   const [lastName,  setLastName]  = useState(user?.lastName  ?? '')
   const [suffix,    setSuffix]    = useState(user?.suffix     ?? '')
   const [email,     setEmail]     = useState(user?.email      ?? '')
+  const [phone,     setPhone]     = useState(user?.phone      ?? '')
   const [loading,   setLoading]   = useState(false)
 
   const dirty =
     firstName !== (user?.firstName ?? '') ||
     lastName  !== (user?.lastName  ?? '') ||
     suffix    !== (user?.suffix    ?? '') ||
-    email     !== user?.email
+    email     !== user?.email ||
+    phone     !== (user?.phone     ?? '')
+
+  const phoneError = phone.trim() && !isValidPhone(phone)
+    ? 'Please enter a valid 10-digit US phone number'
+    : null
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!dirty) return
+    if (phoneError) return
     setLoading(true)
     try {
       const { token, user: fresh } = await api.patch<{ token: string; user: any }>(
@@ -143,6 +159,7 @@ function AccountForm() {
           lastName:  lastName.trim(),
           suffix:    suffix.trim() || null,
           email,
+          phone:     phone.trim() || null,
         }
       )
       authStore.setAuth(token, fresh)
@@ -196,6 +213,23 @@ function AccountForm() {
           />
         </div>
         <div>
+          <label className="label">
+            Mobile Phone{' '}
+            <span className="text-gray-400 font-normal">(US number, 10 digits)</span>
+          </label>
+          <input
+            type="tel"
+            value={phone}
+            onChange={e => setPhone(e.target.value)}
+            placeholder="(555) 555-1234"
+            maxLength={20}
+            className={`input ${phoneError ? 'border-red-400 focus:ring-red-400' : ''}`}
+          />
+          {phoneError && (
+            <p className="text-xs text-red-500 mt-1">{phoneError}</p>
+          )}
+        </div>
+        <div>
           <label className="label">Email address</label>
           <input
             type="email"
@@ -207,7 +241,7 @@ function AccountForm() {
         </div>
         <button
           type="submit"
-          disabled={loading || !dirty}
+          disabled={loading || !dirty || !!phoneError}
           className="btn-primary disabled:opacity-50"
         >
           {loading ? 'Saving…' : 'Save Changes'}
