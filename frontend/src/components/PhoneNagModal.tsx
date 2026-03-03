@@ -23,9 +23,10 @@ export default function PhoneNagModal() {
   const [dismissed, setDismissed] = useState(
     () => !!sessionStorage.getItem(SS_KEY)
   )
+  const [saved, setSaved] = useState(false)
 
   // Only show for authenticated users without a phone number
-  if (!isAuthenticated || !!user?.phone || dismissed) return null
+  if (!isAuthenticated || !!user?.phone || dismissed || saved) return null
 
   const phoneError = phone.trim() && !isValidPhone(phone)
     ? 'Please enter a valid 10-digit US phone number'
@@ -45,7 +46,7 @@ export default function PhoneNagModal() {
         '/auth/profile', { phone: phone.trim() }
       )
       authStore.setAuth(token, fresh)
-      // User now has a phone — modal will not show again
+      setSaved(true)
     } catch (err: any) {
       // Surface error inline; don't toast so the modal stays visible
       console.error('Failed to save phone:', err)
