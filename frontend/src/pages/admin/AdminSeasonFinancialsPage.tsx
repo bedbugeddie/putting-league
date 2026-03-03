@@ -52,6 +52,7 @@ export default function AdminSeasonFinancialsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
+        <Link to="/admin" className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 inline-block mb-1">← Dashboard</Link>
         <h1 className="text-2xl font-bold">Season Financials</h1>
         {season && <p className="text-gray-500 text-sm mt-0.5">{season.name}</p>}
         {!season && <p className="text-gray-400 text-sm mt-0.5">No active season</p>}

@@ -146,7 +146,7 @@ export default function AdminCheckInPage() {
 
   // Players who are checked in but not assigned to any card yet (latecomers)
   const assignedPlayerIds = new Set(cards.flatMap(c => c.players.map(cp => cp.playerId)))
-  const uncardedCheckIns = checkIns.filter(ci => ci.hasPaid && !assignedPlayerIds.has(ci.playerId))
+  const uncardedCheckIns = checkIns.filter(ci => !assignedPlayerIds.has(ci.playerId))
 
   const totalHoles = nightData?.leagueNight?.holes?.length ?? 1
   const N = checkIns.length
@@ -326,6 +326,45 @@ export default function AdminCheckInPage() {
             </div>
           ) : (
             <div className="space-y-3">
+              {/* Unassigned players — checked in but not on any card */}
+              {uncardedCheckIns.length > 0 && (
+                <div className="card border-2 border-dashed border-amber-300 dark:border-amber-700">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-amber-500">⚠️</span>
+                    <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+                      Not on a card yet
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    {uncardedCheckIns.map(ci => (
+                      <div key={ci.playerId} className="flex items-center gap-2">
+                        <span className="flex-1 text-sm font-medium">
+                          {ci.player.user.name}
+                          {ci.player.division?.code && (
+                            <span className="text-xs text-gray-400 ml-1.5">{ci.player.division.code}</span>
+                          )}
+                        </span>
+                        <select
+                          className="text-xs border border-gray-200 rounded px-2 py-1 bg-white text-gray-700 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
+                          defaultValue=""
+                          onChange={e => {
+                            if (e.target.value) {
+                              addToCardMut.mutate({ cardId: e.target.value, playerId: ci.playerId })
+                              e.target.value = ''
+                            }
+                          }}
+                        >
+                          <option value="">Add to card…</option>
+                          {cards.map(c => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {cards.map(card => (
                 <div key={card.id} className="card">
                   <div className="flex items-center justify-between mb-3">
@@ -435,7 +474,6 @@ export default function AdminCheckInPage() {
                     {(() => {
                       const cardPlayerIds = new Set(card.players.map(cp => cp.playerId))
                       const addable = checkIns.filter(ci =>
-                        ci.hasPaid &&
                         !assignedPlayerIds.has(ci.playerId) &&
                         !cardPlayerIds.has(ci.playerId)
                       )
@@ -466,44 +504,6 @@ export default function AdminCheckInPage() {
                 </div>
               ))}
 
-              {/* Late arrivals — checked in but not on any card */}
-              {uncardedCheckIns.length > 0 && (
-                <div className="card border-2 border-dashed border-amber-300 dark:border-amber-700">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-amber-500">⚠️</span>
-                    <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
-                      Late Arrivals — Not on a card yet
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    {uncardedCheckIns.map(ci => (
-                      <div key={ci.playerId} className="flex items-center gap-2">
-                        <span className="flex-1 text-sm font-medium">
-                          {ci.player.user.name}
-                          {ci.player.division?.code && (
-                            <span className="text-xs text-gray-400 ml-1.5">{ci.player.division.code}</span>
-                          )}
-                        </span>
-                        <select
-                          className="text-xs border border-gray-200 rounded px-2 py-1 bg-white text-gray-700 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
-                          defaultValue=""
-                          onChange={e => {
-                            if (e.target.value) {
-                              addToCardMut.mutate({ cardId: e.target.value, playerId: ci.playerId })
-                              e.target.value = ''
-                            }
-                          }}
-                        >
-                          <option value="">Add to card…</option>
-                          {cards.map(c => (
-                            <option key={c.id} value={c.id}>{c.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </div>

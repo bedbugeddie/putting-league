@@ -4,12 +4,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { authStore, useAuth } from '../store/auth'
 import { api } from '../api/client'
 import { useTheme, type ThemeMode } from '../store/theme'
+import type { LeagueNight } from '../api/types'
 import PullToRefresh from './PullToRefresh'
 import Avatar from './ui/Avatar'
 import MotdModal from './MotdModal'
 
 const navLinks = [
-  { to: '/', label: 'Current Event', end: true },
   { to: '/stats', label: 'Stats' },
 ]
 
@@ -70,6 +70,18 @@ export default function Layout() {
   })
   const activeNightId = activeNightData?.nightId ?? null
 
+  // Current live league night — drives the "Current Event" nav link
+  const { data: leagueNightsData } = useQuery<{ leagueNights: LeagueNight[] }>({
+    queryKey: ['league-nights'],
+    queryFn: () => api.get('/league-nights'),
+    enabled: isAuthenticated,
+    refetchInterval: 30_000,
+  })
+  const currentNightId = (leagueNightsData?.leagueNights ?? [])
+    .find(n => n.status === 'IN_PROGRESS')?.id ?? null
+  const currentEventTo  = currentNightId ? `/league-nights/${currentNightId}` : '/'
+  const currentEventEnd = !currentNightId
+
   function close() { setMenuOpen(false) }
   function closeUser() { setUserMenuOpen(false) }
 
@@ -94,6 +106,12 @@ export default function Layout() {
                 className={({ isActive }) => isActive ? 'font-semibold underline' : 'hover:underline'}>
                 League Info
               </NavLink>
+              {isAuthenticated && (
+                <NavLink to={currentEventTo} end={currentEventEnd}
+                  className={({ isActive }) => isActive ? 'font-semibold underline' : 'hover:underline'}>
+                  Current Event
+                </NavLink>
+              )}
               {isAuthenticated && navLinks.map(l => (
                 <NavLink key={l.to} to={l.to} end={l.end}
                   className={({ isActive }) => isActive ? 'font-semibold underline' : 'hover:underline'}>
@@ -240,6 +258,9 @@ export default function Layout() {
 
             <NavLink to="/info" onClick={close} className={mobileNavItem}>
               League Info
+            </NavLink>
+            <NavLink to={currentEventTo} end={currentEventEnd} onClick={close} className={mobileNavItem}>
+              Current Event
             </NavLink>
             {navLinks.map(l => (
               <NavLink key={l.to} to={l.to} end={l.end} onClick={close} className={mobileNavItem}>

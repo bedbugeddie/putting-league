@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 import { api } from '../../api/client'
@@ -130,6 +131,7 @@ export default function AdminMotdPage() {
       {/* ── Page header ── */}
       <div className="flex items-start justify-between gap-4">
         <div>
+          <Link to="/admin" className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 inline-block mb-1">← Dashboard</Link>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Message of the Day</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Display announcements to players when they visit the site.{' '}

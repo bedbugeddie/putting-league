@@ -12,6 +12,7 @@ const updatePlayerSchema = z.object({
   lastName:   z.string().min(0).max(60).optional(),
   suffix:     z.string().max(20).nullable().optional(),
   pdgaNumber: z.string().max(20).trim().nullable().optional(),
+  email:      z.string().email().optional(),
 })
 
 function computeName(firstName: string, lastName: string, suffix: string | null | undefined): string {
@@ -112,7 +113,8 @@ export async function playerRoutes(app: FastifyInstance) {
 
     // Update user fields if provided
     const hasNameParts = body.firstName !== undefined || body.lastName !== undefined
-    if (body.name !== undefined || hasNameParts || body.isAdmin !== undefined) {
+    const hasUserUpdate = body.name !== undefined || hasNameParts || body.isAdmin !== undefined || body.email !== undefined
+    if (hasUserUpdate) {
       let nameUpdate: { name?: string; firstName?: string; lastName?: string; suffix?: string | null } = {}
       if (hasNameParts) {
         const firstName = body.firstName ?? ''
@@ -127,6 +129,7 @@ export async function playerRoutes(app: FastifyInstance) {
         data: {
           ...nameUpdate,
           ...(body.isAdmin !== undefined ? { isAdmin: body.isAdmin } : {}),
+          ...(body.email !== undefined ? { email: body.email } : {}),
         },
       })
     }

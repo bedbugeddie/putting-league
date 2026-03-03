@@ -182,6 +182,7 @@ export default function AdminPlayersPage() {
 
   return (
     <div className="space-y-6">
+      <Link to="/admin" className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 inline-block mb-1">← Dashboard</Link>
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="text-2xl font-bold">Players</h1>
         <div className="flex gap-2 flex-wrap">

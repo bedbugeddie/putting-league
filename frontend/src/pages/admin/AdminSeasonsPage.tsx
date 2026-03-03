@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { api } from '../../api/client'
 import type { Season } from '../../api/types'
 import toast from 'react-hot-toast'
@@ -66,6 +67,7 @@ export default function AdminSeasonsPage() {
 
   return (
     <div className="space-y-6">
+      <Link to="/admin" className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 inline-block mb-1">← Dashboard</Link>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Seasons</h1>
         <button className="btn-primary" onClick={() => { setShowNew(true); setEditingId(null) }}>+ New Season</button>
