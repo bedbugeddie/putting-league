@@ -58,9 +58,11 @@ export async function checkInRoutes(app: FastifyInstance) {
     })
     if (!player) return reply.status(204).send()
 
-    await prisma.checkIn.deleteMany({
-      where: { leagueNightId: id, playerId: player.id },
-    })
+    await prisma.$transaction([
+      prisma.checkIn.deleteMany({ where: { leagueNightId: id, playerId: player.id } }),
+      prisma.card.updateMany({ where: { leagueNightId: id, scorekeeperId: player.id }, data: { scorekeeperId: null } }),
+      prisma.cardPlayer.deleteMany({ where: { playerId: player.id, card: { leagueNightId: id } } }),
+    ])
     return reply.status(204).send()
   })
 
@@ -103,9 +105,11 @@ export async function checkInRoutes(app: FastifyInstance) {
   // DELETE check out any player – admin/scorekeeper override
   app.delete('/league-nights/:id/checkins/:playerId', { preHandler: requireScorekeeper }, async (req, reply) => {
     const { id, playerId } = req.params as { id: string; playerId: string }
-    await prisma.checkIn.delete({
-      where: { leagueNightId_playerId: { leagueNightId: id, playerId } },
-    })
+    await prisma.$transaction([
+      prisma.checkIn.delete({ where: { leagueNightId_playerId: { leagueNightId: id, playerId } } }),
+      prisma.card.updateMany({ where: { leagueNightId: id, scorekeeperId: playerId }, data: { scorekeeperId: null } }),
+      prisma.cardPlayer.deleteMany({ where: { playerId, card: { leagueNightId: id } } }),
+    ])
     return reply.status(204).send()
   })
 

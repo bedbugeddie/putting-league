@@ -58,7 +58,10 @@ export default function AdminCheckInPage() {
   const checkOutMut = useMutation({
     mutationFn: (playerId: string) =>
       api.delete(`/league-nights/${id}/checkins/${playerId}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['checkins', id] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['checkins', id] })
+      qc.invalidateQueries({ queryKey: ['cards', id] })
+    },
     onError: (e: any) => toast.error(e.message),
   })
 
