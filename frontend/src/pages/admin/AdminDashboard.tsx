@@ -33,7 +33,7 @@ export default function AdminDashboard() {
             <p className="text-sm text-green-700">{format(new Date(active.date), 'EEEE, MMMM d, yyyy')}</p>
           </div>
           <div className="flex gap-2" onClick={e => e.stopPropagation()}>
-            <Link to={`/scoring/${active.id}`} className="btn-primary text-sm">Enter Scores</Link>
+            <Link to={`/admin/league-nights/${active.id}/scoring`} className="btn-primary text-sm">Enter Scores</Link>
             <Link to={`/league-nights/${active.id}/leaderboard`} state={{ forceOverall: true }} className="btn-secondary text-sm">Leaderboard</Link>
           </div>
         </div>
