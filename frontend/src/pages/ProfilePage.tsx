@@ -127,24 +127,33 @@ function isValidPhone(v: string) {
   return d.length === 10 || (d.length === 11 && d.startsWith('1'))
 }
 
+/** Format a stored phone value (raw digits / +1…) as (XXX) XXX-XXXX for display. */
+function formatPhone(raw: string | null | undefined): string {
+  if (!raw) return ''
+  const d = digitsOnly(raw)
+  const local = d.length === 11 && d.startsWith('1') ? d.slice(1) : d
+  if (local.length === 10) return `(${local.slice(0, 3)}) ${local.slice(3, 6)}-${local.slice(6)}`
+  return raw
+}
+
 function AccountForm() {
   const { user } = useAuth()
   const [firstName, setFirstName] = useState(user?.firstName ?? '')
   const [lastName,  setLastName]  = useState(user?.lastName  ?? '')
   const [suffix,    setSuffix]    = useState(user?.suffix     ?? '')
   const [email,     setEmail]     = useState(user?.email      ?? '')
-  const [phone,     setPhone]     = useState(user?.phone      ?? '')
+  const [phone,     setPhone]     = useState(formatPhone(user?.phone))
   const [loading,   setLoading]   = useState(false)
 
   // Sync phone from the auth store if it's updated externally (e.g. via the nag modal)
-  useEffect(() => { setPhone(user?.phone ?? '') }, [user?.phone])
+  useEffect(() => { setPhone(formatPhone(user?.phone)) }, [user?.phone])
 
   const dirty =
     firstName !== (user?.firstName ?? '') ||
     lastName  !== (user?.lastName  ?? '') ||
     suffix    !== (user?.suffix    ?? '') ||
     email     !== user?.email ||
-    phone     !== (user?.phone     ?? '')
+    digitsOnly(phone) !== digitsOnly(user?.phone ?? '')
 
   const phoneError = phone.trim() && !isValidPhone(phone)
     ? 'Please enter a valid 10-digit US phone number'
