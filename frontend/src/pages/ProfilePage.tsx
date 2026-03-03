@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../api/client'
 import { useAuth } from '../store/auth'
@@ -135,6 +135,9 @@ function AccountForm() {
   const [email,     setEmail]     = useState(user?.email      ?? '')
   const [phone,     setPhone]     = useState(user?.phone      ?? '')
   const [loading,   setLoading]   = useState(false)
+
+  // Sync phone from the auth store if it's updated externally (e.g. via the nag modal)
+  useEffect(() => { setPhone(user?.phone ?? '') }, [user?.phone])
 
   const dirty =
     firstName !== (user?.firstName ?? '') ||
