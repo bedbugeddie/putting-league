@@ -179,6 +179,64 @@ function AccountForm() {
   )
 }
 
+// ── Player profile form (PDGA number, etc.) ───────────────────────────────────
+
+function PlayerProfileForm() {
+  const { user } = useAuth()
+  const [pdgaNumber, setPdgaNumber] = useState(user?.player?.pdgaNumber ?? '')
+  const [loading, setLoading] = useState(false)
+
+  const dirty = (pdgaNumber.trim() || null) !== (user?.player?.pdgaNumber ?? null)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!dirty) return
+    setLoading(true)
+    try {
+      const { token, user: fresh } = await api.patch<{ token: string; user: any }>(
+        '/players/me', { pdgaNumber: pdgaNumber.trim() || null }
+      )
+      authStore.setAuth(token, fresh)
+      toast.success('Player profile updated!')
+    } catch (err: any) {
+      toast.error(err.message ?? 'Failed to update player profile')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (!user?.player) return null
+
+  return (
+    <div className="card">
+      <h2 className="text-lg font-semibold mb-4">Player Info</h2>
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <div>
+          <label className="label">
+            PDGA Number{' '}
+            <span className="text-gray-400 font-normal">(optional)</span>
+          </label>
+          <input
+            type="text"
+            value={pdgaNumber}
+            onChange={e => setPdgaNumber(e.target.value)}
+            placeholder="e.g. 123456"
+            maxLength={20}
+            className="input"
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={loading || !dirty}
+          className="btn-primary disabled:opacity-50"
+        >
+          {loading ? 'Saving…' : 'Save Changes'}
+        </button>
+      </form>
+    </div>
+  )
+}
+
 // ── Password form ─────────────────────────────────────────────────────────────
 
 function PasswordForm() {
@@ -291,6 +349,7 @@ export default function ProfilePage() {
 
       <AvatarUploadForm />
       <AccountForm />
+      <PlayerProfileForm />
       <PasswordForm />
 
       {/* Stats */}

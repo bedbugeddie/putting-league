@@ -2,10 +2,7 @@ import { FastifyInstance } from 'fastify'
 import { prisma } from '../../lib/prisma.js'
 import { requireAdmin } from '../../middleware/auth.js'
 import { calcLeagueNightTotals } from '../../services/scoring.js'
-
-/** Fixed deductions from every paid entry before the prize pool is calculated. */
-export const HOUSE_PER_ENTRY = 1  // $1 → house / operational
-export const EOY_PER_ENTRY   = 2  // $2 → end-of-year prize pool
+import { getSettings } from './settings.js'
 
 // Payout percentages indexed by tier:
 //   [0] = 0 players, [1] = 1-3, [2] = 4-6, [3] = 7-9,
@@ -160,11 +157,13 @@ export async function payoutRoutes(app: FastifyInstance) {
   app.get('/admin/league-nights/:id/payouts', { preHandler: requireAdmin }, async (req, reply) => {
     const { id } = req.params as { id: string }
 
-    const leagueNight = await prisma.leagueNight.findUnique({
-      where: { id },
-      select: { tieBreakerMode: true },
-    })
+    const [leagueNight, settings] = await Promise.all([
+      prisma.leagueNight.findUnique({ where: { id }, select: { tieBreakerMode: true } }),
+      getSettings(),
+    ])
     if (!leagueNight) return reply.status(404).send({ error: 'Not found' })
+
+    const { housePerEntry, eoyPerEntry } = settings
 
     // Fetch check-ins with division entry fee
     const checkIns = await prisma.checkIn.findMany({
@@ -220,8 +219,8 @@ export async function payoutRoutes(app: FastifyInstance) {
     for (const [, div] of divMap.entries()) {
       const paidCount       = div.paidPlayerIds.size
       const grossCollected  = Math.round(paidCount * div.entryFee)
-      const houseTotal      = paidCount * HOUSE_PER_ENTRY
-      const eoyTotal        = paidCount * EOY_PER_ENTRY
+      const houseTotal      = paidCount * housePerEntry
+      const eoyTotal        = paidCount * eoyPerEntry
       const pool            = Math.max(0, grossCollected - houseTotal - eoyTotal)
       const percentages     = getPayoutPercentages(paidCount)
 
@@ -264,11 +263,13 @@ export async function payoutRoutes(app: FastifyInstance) {
   app.get('/league-nights/:id/payouts', async (req, reply) => {
     const { id } = req.params as { id: string }
 
-    const leagueNight = await prisma.leagueNight.findUnique({
-      where: { id },
-      select: { tieBreakerMode: true },
-    })
+    const [leagueNight, settings] = await Promise.all([
+      prisma.leagueNight.findUnique({ where: { id }, select: { tieBreakerMode: true } }),
+      getSettings(),
+    ])
     if (!leagueNight) return reply.status(404).send({ error: 'Not found' })
+
+    const { housePerEntry, eoyPerEntry } = settings
 
     const checkIns = await prisma.checkIn.findMany({
       where: { leagueNightId: id },
@@ -300,7 +301,7 @@ export async function payoutRoutes(app: FastifyInstance) {
     for (const [divId, { entryFee, playerIds }] of paidByDivision.entries()) {
       const paidCount      = playerIds.size
       const grossCollected = Math.round(paidCount * entryFee)
-      const pool           = Math.max(0, grossCollected - paidCount * HOUSE_PER_ENTRY - paidCount * EOY_PER_ENTRY)
+      const pool           = Math.max(0, grossCollected - paidCount * housePerEntry - paidCount * eoyPerEntry)
       const rankedPlayers = allTotals
         .filter(t => playerIds.has(t.playerId))
         .sort((a, b) => b.totalScore - a.totalScore)
@@ -320,11 +321,17 @@ export async function payoutRoutes(app: FastifyInstance) {
 
   // Season-level financial summary: house, EOY, and payout pool totals per night + season aggregate
   app.get('/admin/seasons/active/financials', { preHandler: requireAdmin }, async (_req, reply) => {
-    const season = await prisma.season.findFirst({
-      where: { isActive: true },
-      select: { id: true, name: true },
+    const [season, settings] = await Promise.all([
+      prisma.season.findFirst({ where: { isActive: true }, select: { id: true, name: true } }),
+      getSettings(),
+    ])
+
+    const { housePerEntry, eoyPerEntry } = settings
+
+    if (!season) return reply.send({
+      season: null, nights: [], totals: { paidCount: 0, grossCollected: 0, houseTotal: 0, eoyTotal: 0, payoutPool: 0 },
+      settings,
     })
-    if (!season) return reply.send({ season: null, nights: [], totals: { paidCount: 0, grossCollected: 0, houseTotal: 0, eoyTotal: 0, payoutPool: 0 } })
 
     // Fetch all league nights for the season (ordered chronologically)
     const nights = await prisma.leagueNight.findMany({
@@ -349,8 +356,8 @@ export async function payoutRoutes(app: FastifyInstance) {
 
     const nightResults = nights.map(n => {
       const agg          = nightAgg.get(n.id) ?? { paidCount: 0, grossCollected: 0 }
-      const houseTotal   = agg.paidCount * HOUSE_PER_ENTRY
-      const eoyTotal     = agg.paidCount * EOY_PER_ENTRY
+      const houseTotal   = agg.paidCount * housePerEntry
+      const eoyTotal     = agg.paidCount * eoyPerEntry
       const payoutPool   = Math.max(0, agg.grossCollected - houseTotal - eoyTotal)
       return { nightId: n.id, date: n.date, status: n.status, paidCount: agg.paidCount, grossCollected: agg.grossCollected, houseTotal, eoyTotal, payoutPool }
     })
@@ -366,6 +373,6 @@ export async function payoutRoutes(app: FastifyInstance) {
       { paidCount: 0, grossCollected: 0, houseTotal: 0, eoyTotal: 0, payoutPool: 0 },
     )
 
-    return reply.send({ season, nights: nightResults, totals })
+    return reply.send({ season, nights: nightResults, totals, settings })
   })
 }

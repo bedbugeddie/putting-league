@@ -6,9 +6,6 @@ import Spinner from '../../components/ui/Spinner'
 import { format } from 'date-fns'
 import clsx from 'clsx'
 
-const HOUSE_PER_ENTRY = 1
-const EOY_PER_ENTRY   = 2
-
 function fmt(n: number) { return `$${n.toLocaleString()}` }
 
 function NightRow({ night, id }: { night: NightFinancials; id: string }) {
@@ -49,7 +46,7 @@ export default function AdminSeasonFinancialsPage() {
 
   if (isLoading) return <div className="flex justify-center py-20"><Spinner className="h-10 w-10" /></div>
 
-  const { season, nights = [], totals } = data ?? {}
+  const { season, nights = [], totals, settings } = data ?? {}
 
   return (
     <div className="space-y-6">
@@ -63,8 +60,9 @@ export default function AdminSeasonFinancialsPage() {
       {/* Explanation card */}
       <div className="card bg-gray-50 dark:bg-gray-800/30 text-sm text-gray-600 dark:text-gray-400">
         <p>
-          Each entry fee is split: <strong className="text-gray-700 dark:text-gray-300">${HOUSE_PER_ENTRY} House</strong> (operational) ·{' '}
-          <strong className="text-blue-600 dark:text-blue-400">${EOY_PER_ENTRY} End of Year</strong> (season prize pool) ·{' '}
+          Each entry fee is split:{' '}
+          <strong className="text-gray-700 dark:text-gray-300">${settings?.housePerEntry ?? '…'} House</strong> (operational) ·{' '}
+          <strong className="text-blue-600 dark:text-blue-400">${settings?.eoyPerEntry ?? '…'} End of Year</strong> (season prize pool) ·{' '}
           <strong className="text-green-700 dark:text-green-400">remainder Payout Pool</strong> (distributed night-of).
         </p>
       </div>

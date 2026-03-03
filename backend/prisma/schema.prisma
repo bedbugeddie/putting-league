@@ -11,6 +11,14 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─── App Settings (singleton row, id = 1) ─────────────────────────────────────
+
+model Settings {
+  id            Int   @id @default(1)
+  housePerEntry Float @default(1)
+  eoyPerEntry   Float @default(2)
+}
+
 // ─── Auth & Users ─────────────────────────────────────────────────────────────
 
 model User {
@@ -56,14 +64,15 @@ model Division {
 }
 
 model Player {
-  id         String    @id @default(cuid())
-  userId     String    @unique
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  divisionId String?
-  division   Division? @relation(fields: [divisionId], references: [id])
-  isActive   Boolean   @default(true)
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id          String    @id @default(cuid())
+  userId      String    @unique
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  divisionId  String?
+  division    Division? @relation(fields: [divisionId], references: [id])
+  pdgaNumber  String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   scores               Score[]
   putOffParticipations PuttOffParticipant[]

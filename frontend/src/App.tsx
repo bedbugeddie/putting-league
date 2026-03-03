@@ -36,6 +36,7 @@ import AdminPlayersPage from './pages/admin/AdminPlayersPage'
 import AdminPlayerDetailPage from './pages/admin/AdminPlayerDetailPage'
 import AdminPayoutPage from './pages/admin/AdminPayoutPage'
 import AdminSeasonFinancialsPage from './pages/admin/AdminSeasonFinancialsPage'
+import AdminSettingsPage from './pages/admin/AdminSettingsPage'
 
 function HomeRoute() {
   const { isAuthenticated } = useAuth()
@@ -100,6 +101,7 @@ export default function App() {
         <Route path="league-nights/:id/checkin" element={<AdminCheckInPage />} />
         <Route path="league-nights/:id/payout" element={<AdminPayoutPage />} />
         <Route path="financials" element={<AdminSeasonFinancialsPage />} />
+        <Route path="settings" element={<AdminSettingsPage />} />
         <Route path="players" element={<AdminPlayersPage />} />
         <Route path="players/:id" element={<AdminPlayerDetailPage />} />
       </Route>

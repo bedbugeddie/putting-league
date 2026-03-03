@@ -10,6 +10,7 @@ const navItems = [
   { to: '/admin/divisions', label: 'Divisions' },
   { to: '/admin/players', label: 'Players' },
   { to: '/admin/financials', label: 'Financials' },
+  { to: '/admin/settings', label: 'Settings' },
 ]
 
 export default function AdminLayout() {

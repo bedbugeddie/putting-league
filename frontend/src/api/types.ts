@@ -1,5 +1,10 @@
 // Shared TypeScript types mirroring the backend Prisma models
 
+export interface AppSettings {
+  housePerEntry: number
+  eoyPerEntry: number
+}
+
 export type LeagueStatus = 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
 export type TieBreakerMode = 'SPLIT' | 'PUTT_OFF'
 export type Position = 'SHORT' | 'LONG'
@@ -28,6 +33,7 @@ export interface Player {
   id: string
   userId: string
   divisionId: string | null
+  pdgaNumber?: string | null
   isActive: boolean
   user: User
   division: Division | null
@@ -204,6 +210,7 @@ export interface SeasonFinancialsResponse {
   season: { id: string; name: string } | null
   nights: NightFinancials[]
   totals: SeasonFinancialsTotals
+  settings: AppSettings
 }
 
 export interface CardPlayer {

@@ -111,16 +111,16 @@ export default function AdminPayoutPage() {
               <p className="text-3xl font-bold text-green-800 dark:text-green-300">${totalGross}</p>
             </div>
             <div>
+              <p className="text-xs text-yellow-700 dark:text-yellow-400 font-medium uppercase tracking-wide">Payout Pool</p>
+              <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">${totalPool}</p>
+            </div>
+            <div>
               <p className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">House</p>
               <p className="text-2xl font-bold text-gray-700 dark:text-gray-300">${totalHouse}</p>
             </div>
             <div>
               <p className="text-xs text-blue-600 dark:text-blue-400 font-medium uppercase tracking-wide">End of Year</p>
               <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">${totalEoy}</p>
-            </div>
-            <div>
-              <p className="text-xs text-green-700 dark:text-green-400 font-medium uppercase tracking-wide">Payout Pool</p>
-              <p className="text-3xl font-bold text-green-800 dark:text-green-300">${totalPool}</p>
             </div>
             <div>
               <p className="text-xs text-green-700 dark:text-green-400 font-medium uppercase tracking-wide">Players Paid</p>

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, Link } from 'react-router-dom'
 import { api } from '../../api/client'
-import type { CheckIn, Card, Player, LeagueNight } from '../../api/types'
+import type { CheckIn, Card, Player, LeagueNight, AppSettings } from '../../api/types'
 import Spinner from '../../components/ui/Spinner'
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
@@ -35,6 +35,11 @@ export default function AdminCheckInPage() {
     queryKey: ['cards', id],
     queryFn: () => api.get(`/league-nights/${id}/cards`),
     enabled: !!id,
+  })
+
+  const { data: settingsData } = useQuery<{ settings: AppSettings }>({
+    queryKey: ['admin-settings'],
+    queryFn: () => api.get('/admin/settings'),
   })
 
   const checkInMut = useMutation({
@@ -116,10 +121,12 @@ export default function AdminCheckInPage() {
     : N < minPlayersPerCard ? 1
     : Math.min(Math.floor(N / minPlayersPerCard), totalHoles)
 
+  const housePerEntry = settingsData?.settings.housePerEntry ?? 1
+  const eoyPerEntry   = settingsData?.settings.eoyPerEntry   ?? 2
   const paidCount   = checkIns.filter(c => c.hasPaid).length
   const totalGross  = checkIns.reduce((sum, c) => c.hasPaid ? sum + (c.player.division?.entryFee ?? 0) : sum, 0)
-  const totalHouse  = paidCount * 1   // $1/entry
-  const totalEoy    = paidCount * 2   // $2/entry
+  const totalHouse  = paidCount * housePerEntry
+  const totalEoy    = paidCount * eoyPerEntry
   const totalPool   = Math.max(0, totalGross - totalHouse - totalEoy)
 
   // Group all players by division for the check-in list

@@ -8,6 +8,7 @@ const updatePlayerSchema = z.object({
   isActive: z.boolean().optional(),
   isAdmin: z.boolean().optional(),
   name: z.string().min(1).max(100).optional(),
+  pdgaNumber: z.string().max(20).trim().nullable().optional(),
 })
 
 const createPlayerSchema = z.object({
@@ -116,6 +117,7 @@ export async function playerRoutes(app: FastifyInstance) {
       data: {
         ...(body.divisionId !== undefined ? { divisionId: body.divisionId } : {}),
         ...(body.isActive !== undefined ? { isActive: body.isActive } : {}),
+        ...(body.pdgaNumber !== undefined ? { pdgaNumber: body.pdgaNumber || null } : {}),
       },
       include: { user: true, division: true },
     })
