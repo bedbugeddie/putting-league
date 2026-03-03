@@ -11,6 +11,7 @@ import LoginPage from './pages/LoginPage'
 import VerifyPage from './pages/VerifyPage'
 import LandingPage from './pages/LandingPage'
 import ChooseDivisionPage from './pages/ChooseDivisionPage'
+import LeagueInfoPage from './pages/LeagueInfoPage'
 
 // Leaderboard / viewer pages
 import LeagueNightsPage from './pages/LeagueNightsPage'
@@ -37,6 +38,7 @@ import AdminPlayerDetailPage from './pages/admin/AdminPlayerDetailPage'
 import AdminPayoutPage from './pages/admin/AdminPayoutPage'
 import AdminSeasonFinancialsPage from './pages/admin/AdminSeasonFinancialsPage'
 import AdminSettingsPage from './pages/admin/AdminSettingsPage'
+import AdminMotdPage from './pages/admin/AdminMotdPage'
 
 function HomeRoute() {
   const { isAuthenticated } = useAuth()
@@ -68,9 +70,8 @@ export default function App() {
 
       {/* Public / viewer routes inside main layout */}
       <Route element={<Layout />}>
-        <Route index element={
-          <HomeRoute />
-        } />
+        <Route index element={<HomeRoute />} />
+        <Route path="info" element={<LeagueInfoPage />} />
         <Route path="league-nights/:id" element={<LeagueNightPage />} />
         <Route path="league-nights/:id/leaderboard" element={<LeaderboardPage />} />
         <Route path="seasons" element={<SeasonsPage />} />
@@ -102,6 +103,7 @@ export default function App() {
         <Route path="league-nights/:id/scoring" element={<ScoringPage adminMode={true} />} />
         <Route path="league-nights/:id/payout" element={<AdminPayoutPage />} />
         <Route path="financials" element={<AdminSeasonFinancialsPage />} />
+        <Route path="motd" element={<AdminMotdPage />} />
         <Route path="settings" element={<AdminSettingsPage />} />
         <Route path="players" element={<AdminPlayersPage />} />
         <Route path="players/:id" element={<AdminPlayerDetailPage />} />

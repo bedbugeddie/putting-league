@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react'
 
-export type ThemeMode = 'light' | 'dark' | 'system'
+export type ThemeMode = 'light' | 'dark' | 'system' | 'pink'
 
 const STORAGE_KEY = 'theme'
 
 function getStoredMode(): ThemeMode {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored === 'light' || stored === 'dark' || stored === 'system') return stored
+    if (stored === 'light' || stored === 'dark' || stored === 'system' || stored === 'pink') {
+      return stored
+    }
   } catch {}
   return 'system'
 }
@@ -17,6 +19,7 @@ function applyTheme(mode: ThemeMode) {
     mode === 'dark' ||
     (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
   document.documentElement.classList.toggle('dark', isDark)
+  document.documentElement.classList.toggle('throw-pink', mode === 'pink')
 }
 
 let _mode: ThemeMode = getStoredMode()

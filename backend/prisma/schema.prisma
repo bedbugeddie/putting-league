@@ -284,3 +284,15 @@ model PuttOffParticipant {
 
   @@unique([puttOffId, playerId, round])
 }
+
+// ─── Message of the Day ───────────────────────────────────────────────────────
+
+model Motd {
+  id        String   @id @default(cuid())
+  title     String?
+  body      String
+  startDate DateTime
+  endDate   DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

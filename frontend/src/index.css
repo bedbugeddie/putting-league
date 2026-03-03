@@ -2,9 +2,41 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Brand colour tokens ──────────────────────────────────────────────────────
+ * Default (emerald/green) palette. Overridden per-theme below.
+ * ─────────────────────────────────────────────────────────────────────────── */
+:root {
+  --brand-50:  #ecfdf5;
+  --brand-100: #d1fae5;
+  --brand-200: #a7f3d0;
+  --brand-300: #6ee7b7;
+  --brand-400: #34d399;
+  --brand-500: #10b981;
+  --brand-600: #059669;
+  --brand-700: #047857;
+  --brand-800: #065f46;
+  --brand-900: #064e3b;
+  --brand-950: #022c22;
+}
+
+/* Throw Pink theme — swaps brand palette to Throw Pink's signature magenta. */
+html.throw-pink {
+  --brand-50:  #fdf2f8;
+  --brand-100: #fce7f3;
+  --brand-200: #fbcfe8;
+  --brand-300: #f9a8d4;
+  --brand-400: #f472b6;
+  --brand-500: #ec4899;
+  --brand-600: #D91A5D;  /* Throw Pink primary */
+  --brand-700: #be185d;
+  --brand-800: #9d174d;
+  --brand-900: #831843;
+  --brand-950: #500724;
+}
+
 @layer base {
   body {
-    /* Light: very pale emerald wash. Dark: deep forest. */
+    /* Light: very pale brand wash. Dark: deep forest. */
     @apply bg-brand-50 text-gray-900 font-sans
            dark:bg-forest dark:text-brand-50;
   }
@@ -14,7 +46,7 @@
   .btn {
     @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
   }
-  /* Light: dark-green filled. Dark: bright emerald with dark text for max contrast. */
+  /* Light: dark filled. Dark: bright brand with dark text for max contrast. */
   .btn-primary {
     @apply btn bg-brand-700 text-white hover:bg-brand-800 focus:ring-brand-600
            dark:bg-brand-400 dark:text-forest dark:hover:bg-brand-300 dark:focus:ring-brand-400 dark:ring-offset-forest;
@@ -26,7 +58,7 @@
   .btn-danger {
     @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
   }
-  /* Light: white card, light emerald border. Dark: forest surface. */
+  /* Light: white card, light brand border. Dark: forest surface. */
   .card {
     @apply bg-white rounded-xl shadow-sm border border-brand-100 p-6
            dark:bg-forest-surface dark:border-forest-border;
@@ -138,6 +170,16 @@
 @media (max-width: 639px) {
   .dark .site-hero {
     background-image: linear-gradient(rgba(0,0,0,0.65), rgba(0,0,0,0.65)), url('/hero-bg.jpg');
+  }
+}
+/* Throw Pink: warm rose scrim to tint the hero photo. */
+.throw-pink .site-hero {
+  background-image: linear-gradient(rgba(217,26,93,0.12), rgba(217,26,93,0.12)), url('/hero-bg.jpg');
+}
+@media (max-width: 639px) {
+  .throw-pink .site-hero {
+    background-image: linear-gradient(rgba(217,26,93,0.20), rgba(217,26,93,0.20)), url('/hero-bg.jpg');
+    background-position: 65% 45%;
   }
 }
 /* Top-level headings that sit directly over the photo (not inside a card). */

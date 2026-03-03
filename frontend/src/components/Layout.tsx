@@ -6,6 +6,7 @@ import { api } from '../api/client'
 import { useTheme, type ThemeMode } from '../store/theme'
 import PullToRefresh from './PullToRefresh'
 import Avatar from './ui/Avatar'
+import MotdModal from './MotdModal'
 
 const navLinks = [
   { to: '/', label: 'Current Event', end: true },
@@ -13,9 +14,10 @@ const navLinks = [
 ]
 
 const THEME_OPTIONS: { mode: ThemeMode; icon: string; label: string }[] = [
-  { mode: 'light',  icon: '☀️', label: 'Light'  },
-  { mode: 'dark',   icon: '🌙', label: 'Dark'   },
-  { mode: 'system', icon: '💻', label: 'System' },
+  { mode: 'light',  icon: '☀️', label: 'Light'      },
+  { mode: 'dark',   icon: '🌙', label: 'Dark'       },
+  { mode: 'system', icon: '💻', label: 'System'     },
+  { mode: 'pink',   icon: '🎀', label: 'Throw Pink' },
 ]
 
 export default function Layout() {
@@ -87,6 +89,11 @@ export default function Layout() {
 
             {/* Desktop nav */}
             <div className="hidden sm:flex items-center gap-4 text-sm">
+              {/* League Info: always visible */}
+              <NavLink to="/info"
+                className={({ isActive }) => isActive ? 'font-semibold underline' : 'hover:underline'}>
+                League Info
+              </NavLink>
               {isAuthenticated && navLinks.map(l => (
                 <NavLink key={l.to} to={l.to} end={l.end}
                   className={({ isActive }) => isActive ? 'font-semibold underline' : 'hover:underline'}>
@@ -159,22 +166,25 @@ export default function Layout() {
 
                         {/* Theme selector */}
                         <div className="border-t border-gray-100 dark:border-forest-border px-3 py-2.5">
-                          <p className="text-xs text-gray-400 mb-1.5">Theme</p>
-                          <div className="flex gap-1">
-                            {THEME_OPTIONS.map(({ mode, icon, label }) => (
-                              <button
-                                key={mode}
-                                onClick={() => setThemeMode(mode)}
-                                className={`flex-1 flex flex-col items-center gap-0.5 py-1.5 rounded text-xs transition-colors ${
-                                  themeMode === mode
-                                    ? 'bg-brand-600 text-white'
-                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                                }`}
-                              >
-                                <span>{icon}</span>
-                                <span>{label}</span>
-                              </button>
-                            ))}
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs text-gray-400">Theme</p>
+                            <div className="flex items-center gap-0.5">
+                              {THEME_OPTIONS.map(({ mode, icon, label }) => (
+                                <button
+                                  key={mode}
+                                  onClick={() => setThemeMode(mode)}
+                                  title={label}
+                                  aria-label={label}
+                                  className={`w-7 h-7 flex items-center justify-center rounded text-base transition-colors ${
+                                    themeMode === mode
+                                      ? 'bg-brand-600 text-white'
+                                      : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                  }`}
+                                >
+                                  {icon}
+                                </button>
+                              ))}
+                            </div>
                           </div>
                         </div>
 
@@ -193,8 +203,15 @@ export default function Layout() {
               )}
             </div>
 
-            {/* Mobile: avatar toggles the drawer */}
-            <div className="flex sm:hidden items-center">
+            {/* Mobile: League Info link (always) + avatar drawer toggle (auth only) */}
+            <div className="flex sm:hidden items-center gap-2">
+              <NavLink to="/info"
+                className={({ isActive }) =>
+                  `text-sm px-2 py-1 rounded transition-colors ${isActive ? 'font-semibold text-white' : 'text-brand-200 hover:text-white'}`
+                }
+              >
+                Info
+              </NavLink>
               {isAuthenticated ? (
                 <button
                   onClick={() => setMenuOpen(o => !o)}
@@ -221,6 +238,9 @@ export default function Layout() {
               </div>
             </div>
 
+            <NavLink to="/info" onClick={close} className={mobileNavItem}>
+              League Info
+            </NavLink>
             {navLinks.map(l => (
               <NavLink key={l.to} to={l.to} end={l.end} onClick={close} className={mobileNavItem}>
                 {l.label}
@@ -246,21 +266,22 @@ export default function Layout() {
             )}
 
             {/* Mobile theme selector */}
-            <div className="py-3 border-b border-brand-700 dark:border-forest-border">
-              <p className="text-xs text-brand-300 mb-2">Theme</p>
-              <div className="flex gap-2">
+            <div className="py-3 border-b border-brand-700 dark:border-forest-border flex items-center justify-between">
+              <p className="text-xs text-brand-300">Theme</p>
+              <div className="flex items-center gap-1">
                 {THEME_OPTIONS.map(({ mode, icon, label }) => (
                   <button
                     key={mode}
                     onClick={() => setThemeMode(mode)}
-                    className={`flex-1 flex flex-col items-center gap-0.5 py-1.5 rounded text-xs transition-colors ${
+                    title={label}
+                    aria-label={label}
+                    className={`w-8 h-8 flex items-center justify-center rounded text-base transition-colors ${
                       themeMode === mode
                         ? 'bg-brand-500 text-white'
-                        : 'bg-brand-700 dark:bg-forest-mid text-brand-200 hover:bg-brand-600'
+                        : 'text-brand-200 hover:bg-brand-700 dark:hover:bg-forest-mid'
                     }`}
                   >
-                    <span>{icon}</span>
-                    <span>{label}</span>
+                    {icon}
                   </button>
                 ))}
               </div>
@@ -275,6 +296,9 @@ export default function Layout() {
           </div>
         )}
       </nav>
+
+      {/* ── MOTD modal (shown once per session if an active message exists) ── */}
+      <MotdModal />
 
       {/* ── Content ── */}
       <PullToRefresh onRefresh={handleRefresh}>

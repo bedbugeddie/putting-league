@@ -1,4 +1,5 @@
 import type { Config } from 'tailwindcss'
+import typography from '@tailwindcss/typography'
 
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
@@ -6,19 +7,20 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Emerald-based brand scale — used for accents, buttons, nav
+        // Brand scale — driven by CSS variables so the Throw Pink theme can
+        // swap the whole palette by changing the vars on <html>.
         brand: {
-          50:  '#ecfdf5',
-          100: '#d1fae5',
-          200: '#a7f3d0',
-          300: '#6ee7b7',
-          400: '#34d399',
-          500: '#10b981',
-          600: '#059669',
-          700: '#047857',
-          800: '#065f46',
-          900: '#064e3b',
-          950: '#022c22',
+          50:  'var(--brand-50)',
+          100: 'var(--brand-100)',
+          200: 'var(--brand-200)',
+          300: 'var(--brand-300)',
+          400: 'var(--brand-400)',
+          500: 'var(--brand-500)',
+          600: 'var(--brand-600)',
+          700: 'var(--brand-700)',
+          800: 'var(--brand-800)',
+          900: 'var(--brand-900)',
+          950: 'var(--brand-950)',
         },
         // Dark forest palette — used for dark mode backgrounds/surfaces/borders
         forest: {
@@ -34,5 +36,5 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [typography],
 } satisfies Config

@@ -259,3 +259,15 @@ export interface NightHighlights {
   mostImproved: { playerName: string; divisionCode: string; delta: number; previous: number; current: number } | null
   perfectRounders: { playerName: string; divisionCode: string; roundNumber: number }[]
 }
+
+// ── Message of the Day ────────────────────────────────────────────────────────
+
+export interface Motd {
+  id: string
+  title?: string | null
+  body: string
+  startDate: string
+  endDate: string
+  createdAt: string
+  updatedAt: string
+}
