@@ -17,7 +17,7 @@ const THEME_OPTIONS: { mode: ThemeMode; icon: string; label: string }[] = [
   { mode: 'light',  icon: '☀️', label: 'Light'      },
   { mode: 'dark',   icon: '🌙', label: 'Dark'       },
   { mode: 'system', icon: '💻', label: 'System'     },
-  { mode: 'pink',   icon: '🎀', label: 'Throw Pink' },
+  { mode: 'pink',   icon: '🩷', label: 'Throw Pink' },
 ]
 
 export default function Layout() {
