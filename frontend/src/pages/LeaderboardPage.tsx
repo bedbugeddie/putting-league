@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useLeaderboard } from '../hooks/useLeaderboard'
 import { useAuth } from '../store/auth'
@@ -146,20 +146,23 @@ function LeaderboardTable({
 
 export default function LeaderboardPage() {
   const { id } = useParams<{ id: string }>()
+  const location = useLocation()
+  const forceOverall = (location.state as { forceOverall?: boolean } | null)?.forceOverall === true
   const { data, isLoading, connected } = useLeaderboard(id ?? null)
   const { user } = useAuth()
   const [tab, setTab] = useState<'overall' | string>('overall')
   const [autoSelected, setAutoSelected] = useState(false)
 
-  // Auto-select the player's own division once data arrives
+  // Auto-select the player's own division once data arrives.
+  // Skipped when navigating from the admin panel (forceOverall flag).
   useEffect(() => {
-    if (autoSelected || !data || !user?.player?.division?.code) return
+    if (forceOverall || autoSelected || !data || !user?.player?.division?.code) return
     const divCode = user.player.division.code
     if (data.byDivision && divCode in data.byDivision) {
       setTab(divCode)
       setAutoSelected(true)
     }
-  }, [data, user, autoSelected])
+  }, [data, user, autoSelected, forceOverall])
 
   const { data: payoutData } = useQuery<{ payouts: Record<string, PayoutInfo> }>({
     queryKey: ['public-payouts', id],
