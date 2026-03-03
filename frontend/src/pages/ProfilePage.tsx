@@ -196,7 +196,6 @@ function AccountForm() {
               value={firstName}
               onChange={e => setFirstName(e.target.value)}
               className="input"
-              placeholder="First"
             />
           </div>
           <div>
@@ -206,23 +205,27 @@ function AccountForm() {
               value={lastName}
               onChange={e => setLastName(e.target.value)}
               className="input"
-              placeholder="Last"
             />
           </div>
         </div>
         <div>
-          <label className="label">Suffix</label>
+          <label className="label">
+            Suffix{' '}
+            <span className="text-gray-400 font-normal">(optional — e.g. Jr., Sr., II)</span>
+          </label>
           <input
             type="text"
             value={suffix}
             onChange={e => setSuffix(e.target.value)}
             className="input"
-            placeholder="Jr."
             maxLength={20}
           />
         </div>
         <div>
-          <label className="label">Mobile Phone</label>
+          <label className="label">
+            Mobile Phone{' '}
+            <span className="text-gray-400 font-normal">(US number, 10 digits)</span>
+          </label>
           <input
             type="tel"
             value={phone}

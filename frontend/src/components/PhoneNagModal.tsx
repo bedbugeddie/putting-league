@@ -77,7 +77,10 @@ export default function PhoneNagModal() {
         {/* Form */}
         <form onSubmit={handleSubmit} className="px-6 pb-6 space-y-4">
           <div>
-            <label className="label">Mobile Phone</label>
+            <label className="label">
+              Mobile Phone{' '}
+              <span className="text-gray-400 font-normal">(US number, 10 digits)</span>
+            </label>
             <input
               type="tel"
               autoFocus
