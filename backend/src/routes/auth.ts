@@ -27,9 +27,19 @@ const setPasswordSchema = z.object({
 })
 
 const updateProfileSchema = z.object({
-  name: z.string().min(1).max(100).optional(),
-  email: z.string().email().optional(),
+  name:      z.string().min(1).max(100).optional(),
+  firstName: z.string().min(1).max(60).optional(),
+  lastName:  z.string().min(0).max(60).optional(),
+  suffix:    z.string().max(20).nullable().optional(),
+  email:     z.string().email().optional(),
 })
+
+/** Derive display name from parts when parts are provided. */
+function computeName(firstName: string, lastName: string, suffix: string | null | undefined): string {
+  const parts = [firstName.trim(), lastName.trim()].filter(Boolean)
+  const base = parts.join(' ')
+  return suffix ? `${base} ${suffix.trim()}` : base
+}
 
 /** Build the standard JWT + full user response used by all auth flows */
 async function buildAuthResponse(app: FastifyInstance, userId: string) {
@@ -156,10 +166,27 @@ export async function authRoutes(app: FastifyInstance) {
       }
     }
 
+    // When firstName/lastName are supplied, derive the display name from them.
+    // If only a raw `name` string is supplied, keep the old behaviour.
+    let nameUpdate: { name?: string; firstName?: string; lastName?: string; suffix?: string | null } = {}
+    if (body.firstName !== undefined || body.lastName !== undefined) {
+      const firstName = body.firstName ?? ''
+      const lastName  = body.lastName  ?? ''
+      const suffix    = body.suffix !== undefined ? body.suffix : null
+      nameUpdate = {
+        firstName,
+        lastName,
+        suffix,
+        name: computeName(firstName, lastName, suffix),
+      }
+    } else if (body.name !== undefined) {
+      nameUpdate = { name: body.name }
+    }
+
     await prisma.user.update({
       where: { id: req.user!.userId },
       data: {
-        ...(body.name  !== undefined ? { name:  body.name  } : {}),
+        ...nameUpdate,
         ...(body.email !== undefined ? { email: body.email } : {}),
       },
     })

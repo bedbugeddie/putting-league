@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, Link } from 'react-router-dom'
 import { api } from '../../api/client'
-import type { CheckIn, Card, Player, LeagueNight, AppSettings } from '../../api/types'
+import type { CheckIn, Card, Division, Player, LeagueNight, AppSettings } from '../../api/types'
 import Spinner from '../../components/ui/Spinner'
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
@@ -41,6 +41,11 @@ export default function AdminCheckInPage() {
   const { data: settingsData } = useQuery<{ settings: AppSettings }>({
     queryKey: ['admin-settings'],
     queryFn: () => api.get('/admin/settings'),
+  })
+
+  const { data: divisionsData } = useQuery<{ divisions: Division[] }>({
+    queryKey: ['admin-divisions'],
+    queryFn: () => api.get('/admin/divisions'),
   })
 
   const checkInMut = useMutation({
@@ -118,12 +123,25 @@ export default function AdminCheckInPage() {
     onError: (e: any) => toast.error(e.message),
   })
 
+  const changeDivisionMut = useMutation({
+    mutationFn: ({ playerId, divisionId }: { playerId: string; divisionId: string | null }) =>
+      api.patch(`/admin/players/${playerId}`, { divisionId }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['cards', id] })
+      qc.invalidateQueries({ queryKey: ['admin-players'] })
+      qc.invalidateQueries({ queryKey: ['checkins', id] })
+      toast.success('Division updated!')
+    },
+    onError: (e: any) => toast.error(e.message),
+  })
+
   const isLoading = playersLoading || checkInsLoading || cardsLoading
   if (isLoading) return <div className="flex justify-center py-20"><Spinner className="h-10 w-10" /></div>
 
   const allPlayers = allPlayersData?.players ?? []
   const checkIns = checkInsData?.checkIns ?? []
   const cards = cardsData?.cards ?? []
+  const allDivisions = (divisionsData?.divisions ?? []).filter(d => d.isActive).sort((a, b) => a.sortOrder - b.sortOrder)
   const checkedInMap = new Map(checkIns.map(c => [c.playerId, c]))
 
   // Players who are checked in but not assigned to any card yet (latecomers)
@@ -227,12 +245,12 @@ export default function AdminCheckInPage() {
                           className={clsx(
                             'flex-1 flex items-center justify-between px-4 py-3 rounded-lg border text-sm transition-colors min-h-[48px]',
                             isIn
-                              ? 'bg-brand-50 border-brand-300 text-brand-800 dark:bg-brand-900/30 dark:border-brand-700 dark:text-brand-200'
-                              : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600'
+                              ? 'bg-brand-100 border-brand-400 text-brand-900 dark:bg-forest-mid dark:border-brand-700 dark:text-brand-100'
+                              : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 dark:bg-forest-surface dark:border-forest-border dark:text-brand-200 dark:hover:bg-forest-mid'
                           )}
                         >
                           <span className="font-medium">{p.user.name}</span>
-                          <span className={clsx('text-sm font-semibold', isIn ? 'text-brand-600' : 'text-gray-400')}>
+                          <span className={clsx('text-sm font-bold', isIn ? 'text-brand-800 dark:text-brand-300' : 'text-gray-400')}>
                             {isIn ? '✓ In' : 'Out'}
                           </span>
                         </button>
@@ -375,7 +393,19 @@ export default function AdminCheckInPage() {
                             {checkIn?.hasPaid && (
                               <span className="text-xs text-green-600 font-semibold">$</span>
                             )}
-                            <span className="text-xs text-gray-400">{cp.player.division?.code ?? '—'}</span>
+                            <select
+                              className="text-xs border border-gray-200 rounded px-1 py-0.5 bg-white text-gray-700 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
+                              value={cp.player.divisionId ?? ''}
+                              onChange={e => changeDivisionMut.mutate({
+                                playerId: cp.player.id,
+                                divisionId: e.target.value || null,
+                              })}
+                            >
+                              <option value="">— No div —</option>
+                              {allDivisions.map(d => (
+                                <option key={d.id} value={d.id}>{d.code}</option>
+                              ))}
+                            </select>
                             {cards.length > 1 && (
                               <select
                                 className="text-xs border border-gray-200 rounded px-1 py-0.5 bg-white text-gray-700 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"

@@ -5,11 +5,20 @@ import { requireAdmin } from '../../middleware/auth.js'
 
 const updatePlayerSchema = z.object({
   divisionId: z.string().cuid().nullable().optional(),
-  isActive: z.boolean().optional(),
-  isAdmin: z.boolean().optional(),
-  name: z.string().min(1).max(100).optional(),
+  isActive:   z.boolean().optional(),
+  isAdmin:    z.boolean().optional(),
+  name:       z.string().min(1).max(100).optional(),
+  firstName:  z.string().min(1).max(60).optional(),
+  lastName:   z.string().min(0).max(60).optional(),
+  suffix:     z.string().max(20).nullable().optional(),
   pdgaNumber: z.string().max(20).trim().nullable().optional(),
 })
+
+function computeName(firstName: string, lastName: string, suffix: string | null | undefined): string {
+  const parts = [firstName.trim(), lastName.trim()].filter(Boolean)
+  const base = parts.join(' ')
+  return suffix ? `${base} ${suffix.trim()}` : base
+}
 
 const createPlayerSchema = z.object({
   email: z.string().email(),
@@ -102,11 +111,21 @@ export async function playerRoutes(app: FastifyInstance) {
     if (!player) return reply.status(404).send({ error: 'Player not found' })
 
     // Update user fields if provided
-    if (body.name !== undefined || body.isAdmin !== undefined) {
+    const hasNameParts = body.firstName !== undefined || body.lastName !== undefined
+    if (body.name !== undefined || hasNameParts || body.isAdmin !== undefined) {
+      let nameUpdate: { name?: string; firstName?: string; lastName?: string; suffix?: string | null } = {}
+      if (hasNameParts) {
+        const firstName = body.firstName ?? ''
+        const lastName  = body.lastName  ?? ''
+        const suffix    = body.suffix !== undefined ? body.suffix : null
+        nameUpdate = { firstName, lastName, suffix, name: computeName(firstName, lastName, suffix) }
+      } else if (body.name !== undefined) {
+        nameUpdate = { name: body.name }
+      }
       await prisma.user.update({
         where: { id: player.userId },
         data: {
-          ...(body.name !== undefined ? { name: body.name } : {}),
+          ...nameUpdate,
           ...(body.isAdmin !== undefined ? { isAdmin: body.isAdmin } : {}),
         },
       })

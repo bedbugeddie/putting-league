@@ -13,6 +13,9 @@ export interface User {
   id: string
   email: string
   name: string
+  firstName?: string | null
+  lastName?: string | null
+  suffix?: string | null
   isAdmin: boolean
   avatarDataUrl?: string | null
   player?: Player

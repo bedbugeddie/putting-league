@@ -120,11 +120,17 @@ function AvatarUploadForm() {
 
 function AccountForm() {
   const { user } = useAuth()
-  const [name, setName] = useState(user?.name ?? '')
-  const [email, setEmail] = useState(user?.email ?? '')
-  const [loading, setLoading] = useState(false)
+  const [firstName, setFirstName] = useState(user?.firstName ?? '')
+  const [lastName,  setLastName]  = useState(user?.lastName  ?? '')
+  const [suffix,    setSuffix]    = useState(user?.suffix     ?? '')
+  const [email,     setEmail]     = useState(user?.email      ?? '')
+  const [loading,   setLoading]   = useState(false)
 
-  const dirty = name !== user?.name || email !== user?.email
+  const dirty =
+    firstName !== (user?.firstName ?? '') ||
+    lastName  !== (user?.lastName  ?? '') ||
+    suffix    !== (user?.suffix    ?? '') ||
+    email     !== user?.email
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -132,7 +138,12 @@ function AccountForm() {
     setLoading(true)
     try {
       const { token, user: fresh } = await api.patch<{ token: string; user: any }>(
-        '/auth/profile', { name, email }
+        '/auth/profile', {
+          firstName: firstName.trim(),
+          lastName:  lastName.trim(),
+          suffix:    suffix.trim() || null,
+          email,
+        }
       )
       authStore.setAuth(token, fresh)
       toast.success('Profile updated!')
@@ -147,14 +158,41 @@ function AccountForm() {
     <div className="card">
       <h2 className="text-lg font-semibold mb-4">Account Info</h2>
       <form onSubmit={handleSubmit} className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="label">First Name</label>
+            <input
+              type="text"
+              required
+              value={firstName}
+              onChange={e => setFirstName(e.target.value)}
+              className="input"
+              placeholder="First"
+            />
+          </div>
+          <div>
+            <label className="label">Last Name</label>
+            <input
+              type="text"
+              value={lastName}
+              onChange={e => setLastName(e.target.value)}
+              className="input"
+              placeholder="Last"
+            />
+          </div>
+        </div>
         <div>
-          <label className="label">Name</label>
+          <label className="label">
+            Suffix{' '}
+            <span className="text-gray-400 font-normal">(optional — e.g. Jr., Sr., II)</span>
+          </label>
           <input
             type="text"
-            required
-            value={name}
-            onChange={e => setName(e.target.value)}
+            value={suffix}
+            onChange={e => setSuffix(e.target.value)}
             className="input"
+            placeholder="Jr."
+            maxLength={20}
           />
         </div>
         <div>
