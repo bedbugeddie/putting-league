@@ -188,3 +188,49 @@ html.throw-pink {
   color: white;
   text-shadow: 0 1px 3px rgba(0,0,0,0.55);
 }
+
+/*
+ * ── Throw Pink: green → pink remapping ────────────────────────────────────────
+ * Components using direct green-* Tailwind classes (status badges, score cards,
+ * highlights, etc.) still render green without these overrides because only the
+ * brand-* CSS-variable classes are swapped by html.throw-pink above.
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+/* Backgrounds */
+.throw-pink .bg-green-50  { background-color: #fdf2f8; }
+.throw-pink .bg-green-100 { background-color: #fce7f3; }
+.throw-pink .bg-green-200 { background-color: #fbcfe8; }
+.throw-pink .bg-green-500 { background-color: #ec4899; }
+.throw-pink .bg-green-600 { background-color: #D91A5D; }
+.throw-pink .bg-green-700 { background-color: #be185d; }
+
+/* Backgrounds with opacity modifier */
+.throw-pink .bg-green-50\/30  { background-color: rgba(253, 242, 248, 0.30); }
+.throw-pink .bg-green-50\/50  { background-color: rgba(253, 242, 248, 0.50); }
+.throw-pink .bg-green-900\/10 { background-color: rgba(131,  24,  67, 0.10); }
+.throw-pink .bg-green-900\/20 { background-color: rgba(131,  24,  67, 0.20); }
+.throw-pink .bg-green-900\/30 { background-color: rgba(131,  24,  67, 0.30); }
+.throw-pink .bg-green-900\/40 { background-color: rgba(131,  24,  67, 0.40); }
+
+/* Text */
+.throw-pink .text-green-300 { color: #f9a8d4; }
+.throw-pink .text-green-400 { color: #f472b6; }
+.throw-pink .text-green-600 { color: #D91A5D; }
+.throw-pink .text-green-700 { color: #be185d; }
+.throw-pink .text-green-800 { color: #9d174d; }
+
+/* Borders */
+.throw-pink .border-green-200 { border-color: #fbcfe8; }
+.throw-pink .border-green-300 { border-color: #f9a8d4; }
+.throw-pink .border-green-700 { border-color: #be185d; }
+.throw-pink .border-green-800 { border-color: #9d174d; }
+
+/* Hover backgrounds */
+.throw-pink .hover\:bg-green-200:hover { background-color: #fbcfe8; }
+.throw-pink .hover\:bg-green-700:hover { background-color: #be185d; }
+
+/* Hover borders */
+.throw-pink .hover\:border-green-300:hover { border-color: #f9a8d4; }
+
+/* Hover text */
+.throw-pink .hover\:text-green-600:hover { color: #D91A5D; }
