@@ -128,7 +128,7 @@ export default function AdminCheckInPage() {
 
   // Players who are checked in but not assigned to any card yet (latecomers)
   const assignedPlayerIds = new Set(cards.flatMap(c => c.players.map(cp => cp.playerId)))
-  const uncardedCheckIns = checkIns.filter(ci => !assignedPlayerIds.has(ci.playerId))
+  const uncardedCheckIns = checkIns.filter(ci => ci.hasPaid && !assignedPlayerIds.has(ci.playerId))
 
   const totalHoles = nightData?.leagueNight?.holes?.length ?? 1
   const N = checkIns.length
@@ -401,11 +401,14 @@ export default function AdminCheckInPage() {
                       )
                     })}
 
-                    {/* Add any checked-in player not yet on this card */}
+                    {/* Add any paid checked-in player not yet on this card */}
                     {(() => {
                       const cardPlayerIds = new Set(card.players.map(cp => cp.playerId))
-                      const addable = checkIns.filter(ci => !assignedPlayerIds.has(ci.playerId) || cardPlayerIds.has(ci.playerId) === false)
-                        .filter(ci => !cardPlayerIds.has(ci.playerId))
+                      const addable = checkIns.filter(ci =>
+                        ci.hasPaid &&
+                        !assignedPlayerIds.has(ci.playerId) &&
+                        !cardPlayerIds.has(ci.playerId)
+                      )
                       if (addable.length === 0) return null
                       return (
                         <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
