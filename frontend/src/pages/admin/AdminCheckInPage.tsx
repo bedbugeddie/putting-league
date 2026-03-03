@@ -12,6 +12,7 @@ export default function AdminCheckInPage() {
   const qc = useQueryClient()
   const [minPlayersPerCard, setMinPlayersPerCard] = useState(3)
   const [shuffle, setShuffle] = useState(true)
+  const [showUnpaidOnly, setShowUnpaidOnly] = useState(false)
 
   const { data: nightData } = useQuery<{ leagueNight: LeagueNight }>({
     queryKey: ['league-night', id],
@@ -79,6 +80,16 @@ export default function AdminCheckInPage() {
     onError: (e: any) => toast.error(e.message),
   })
 
+  const addToCardMut = useMutation({
+    mutationFn: ({ cardId, playerId }: { cardId: string; playerId: string }) =>
+      api.post(`/cards/${cardId}/players`, { playerId }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['cards', id] })
+      toast.success('Player added to card!')
+    },
+    onError: (e: any) => toast.error(e.message),
+  })
+
   const removePlayerMut = useMutation({
     mutationFn: ({ cardId, playerId }: { cardId: string; playerId: string }) =>
       api.delete(`/cards/${cardId}/players/${playerId}`),
@@ -114,6 +125,10 @@ export default function AdminCheckInPage() {
   const checkIns = checkInsData?.checkIns ?? []
   const cards = cardsData?.cards ?? []
   const checkedInMap = new Map(checkIns.map(c => [c.playerId, c]))
+
+  // Players who are checked in but not assigned to any card yet (latecomers)
+  const assignedPlayerIds = new Set(cards.flatMap(c => c.players.map(cp => cp.playerId)))
+  const uncardedCheckIns = checkIns.filter(ci => !assignedPlayerIds.has(ci.playerId))
 
   const totalHoles = nightData?.leagueNight?.holes?.length ?? 1
   const N = checkIns.length
@@ -163,12 +178,30 @@ export default function AdminCheckInPage() {
               💰 Payout Calculator
             </Link>
           </div>
-          <p className="text-sm text-gray-500">Toggle players present tonight. Use the $ button to mark entry fee payment.</p>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-gray-500">Toggle players present tonight. Use the $ button to mark entry fee payment.</p>
+            <button
+              onClick={() => setShowUnpaidOnly(v => !v)}
+              className={clsx(
+                'text-xs px-3 py-1.5 rounded-lg border transition-colors shrink-0 ml-3',
+                showUnpaidOnly
+                  ? 'bg-amber-50 border-amber-300 text-amber-700 dark:bg-amber-900/30 dark:border-amber-700 dark:text-amber-300'
+                  : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400'
+              )}
+            >
+              {showUnpaidOnly ? '$ Unpaid only ✓' : '$ Unpaid only'}
+            </button>
+          </div>
 
           {divisions.map(([divCode, players]) => {
             const divCheckIns = players.filter(p => checkedInMap.has(p.id))
             const divPaid = divCheckIns.filter(p => checkedInMap.get(p.id)?.hasPaid).length
             const entryFee = players[0]?.division?.entryFee ?? 0
+            // When filtering, only show players who are checked-in and haven't paid
+            const visiblePlayers = showUnpaidOnly
+              ? players.filter(p => checkedInMap.has(p.id) && !checkedInMap.get(p.id)?.hasPaid)
+              : players
+            if (showUnpaidOnly && visiblePlayers.length === 0) return null
             return (
               <div key={divCode} className="card">
                 <div className="flex items-center justify-between mb-3">
@@ -182,7 +215,7 @@ export default function AdminCheckInPage() {
                   )}
                 </div>
                 <div className="space-y-2">
-                  {players.map(p => {
+                  {visiblePlayers.map(p => {
                     const checkIn = checkedInMap.get(p.id)
                     const isIn = !!checkIn
                     const hasPaid = checkIn?.hasPaid ?? false
@@ -280,7 +313,9 @@ export default function AdminCheckInPage() {
                   <div className="flex items-center justify-between mb-3">
                     <div>
                       <p className="font-semibold">{card.name}</p>
-                      <p className="text-xs text-gray-500">Starts at Hole #{card.startingHole}</p>
+                      <p className="text-xs text-gray-500">
+                        Starts at Hole #{card.startingHole} · {card.players.length} {card.players.length === 1 ? 'player' : 'players'}
+                      </p>
                     </div>
                     <button
                       onClick={() => { if (confirm(`Delete ${card.name}?`)) deleteCardMut.mutate(card.id) }}
@@ -365,9 +400,77 @@ export default function AdminCheckInPage() {
                         </div>
                       )
                     })}
+
+                    {/* Add any checked-in player not yet on this card */}
+                    {(() => {
+                      const cardPlayerIds = new Set(card.players.map(cp => cp.playerId))
+                      const addable = checkIns.filter(ci => !assignedPlayerIds.has(ci.playerId) || cardPlayerIds.has(ci.playerId) === false)
+                        .filter(ci => !cardPlayerIds.has(ci.playerId))
+                      if (addable.length === 0) return null
+                      return (
+                        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                          <select
+                            className="text-xs border border-dashed border-gray-300 rounded px-2 py-1 flex-1 bg-white text-gray-700 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
+                            defaultValue=""
+                            onChange={e => {
+                              if (e.target.value) {
+                                addToCardMut.mutate({ cardId: card.id, playerId: e.target.value })
+                                e.target.value = ''
+                              }
+                            }}
+                          >
+                            <option value="">+ Add player…</option>
+                            {addable.map(ci => (
+                              <option key={ci.playerId} value={ci.playerId}>
+                                {ci.player.user.name}{ci.player.division?.code ? ` (${ci.player.division.code})` : ''}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )
+                    })()}
                   </div>
                 </div>
               ))}
+
+              {/* Late arrivals — checked in but not on any card */}
+              {uncardedCheckIns.length > 0 && (
+                <div className="card border-2 border-dashed border-amber-300 dark:border-amber-700">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-amber-500">⚠️</span>
+                    <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+                      Late Arrivals — Not on a card yet
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    {uncardedCheckIns.map(ci => (
+                      <div key={ci.playerId} className="flex items-center gap-2">
+                        <span className="flex-1 text-sm font-medium">
+                          {ci.player.user.name}
+                          {ci.player.division?.code && (
+                            <span className="text-xs text-gray-400 ml-1.5">{ci.player.division.code}</span>
+                          )}
+                        </span>
+                        <select
+                          className="text-xs border border-gray-200 rounded px-2 py-1 bg-white text-gray-700 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
+                          defaultValue=""
+                          onChange={e => {
+                            if (e.target.value) {
+                              addToCardMut.mutate({ cardId: e.target.value, playerId: ci.playerId })
+                              e.target.value = ''
+                            }
+                          }}
+                        >
+                          <option value="">Add to card…</option>
+                          {cards.map(c => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

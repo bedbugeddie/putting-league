@@ -283,12 +283,14 @@ function FinishView({
 
 // ── Main page ──────────────────────────────────────────────────────────────────
 
-export default function ScoringPage() {
+export default function ScoringPage({ adminMode = false }: { adminMode?: boolean }) {
   const { id } = useParams<{ id: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
   const cardIdParam = searchParams.get('card')
   const queryClient = useQueryClient()
-  const { isAdmin, user } = useAuth()
+  const { isAdmin: _isAdmin, user } = useAuth()
+  // Admin card-switching is only available when accessed from the admin panel
+  const isAdmin = adminMode && _isAdmin
   const [holeIndex, setHoleIndex] = useState(0)
   const [roundIndex, setRoundIndex] = useState(0)
   const [showSummary, setShowSummary] = useState(false)

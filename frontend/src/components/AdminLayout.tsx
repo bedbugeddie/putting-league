@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Outlet, NavLink, Link, useLocation, useNavigate } from 'react-router-dom'
-import { authStore } from '../store/auth'
+import { authStore, useAuth } from '../store/auth'
 import { api } from '../api/client'
+import Avatar from './ui/Avatar'
 
 const navItems = [
   { to: '/admin', label: 'Dashboard', end: true },
@@ -17,6 +18,7 @@ export default function AdminLayout() {
   const [menuOpen, setMenuOpen] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
+  const { user } = useAuth()
 
   function signOut() { authStore.clearAuth(); navigate('/') }
 
@@ -59,36 +61,43 @@ export default function AdminLayout() {
               </div>
             </div>
 
-            {/* Desktop: sign out */}
-            <button
-              onClick={signOut}
-              className="hidden sm:block text-brand-300 hover:text-white text-sm"
-            >
-              Sign out
-            </button>
+            {/* Desktop: avatar + sign out */}
+            <div className="hidden sm:flex items-center gap-3">
+              <Avatar name={user?.name ?? ''} avatarDataUrl={user?.avatarDataUrl} size="sm" />
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-white leading-tight truncate max-w-[120px]">{user?.name}</p>
+              </div>
+              <button
+                onClick={signOut}
+                className="text-brand-300 hover:text-white text-sm ml-1"
+              >
+                Sign out
+              </button>
+            </div>
 
-            {/* Mobile: hamburger */}
+            {/* Mobile: avatar button toggles drawer */}
             <button
               onClick={() => setMenuOpen(o => !o)}
-              className="sm:hidden p-2 rounded hover:bg-forest-mid transition-colors"
+              className="sm:hidden p-1 rounded hover:bg-forest-mid transition-colors"
               aria-label="Toggle menu"
             >
-              {menuOpen ? (
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              ) : (
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              )}
+              <Avatar name={user?.name ?? ''} avatarDataUrl={user?.avatarDataUrl} size="sm" />
             </button>
           </div>
         </div>
 
-        {/* Mobile menu */}
+        {/* Mobile drawer */}
         {menuOpen && (
           <div className="sm:hidden bg-forest px-4 pb-4">
+            {/* User info banner */}
+            <div className="flex items-center gap-2.5 py-3 border-b border-forest-border">
+              <Avatar name={user?.name ?? ''} avatarDataUrl={user?.avatarDataUrl} size="sm" />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-white truncate">{user?.name}</p>
+                <p className="text-xs text-brand-300 truncate">{user?.email}</p>
+              </div>
+            </div>
+
             {navItems.map(item => (
               <NavLink
                 key={item.to}

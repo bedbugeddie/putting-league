@@ -134,7 +134,7 @@ export default function AdminLeagueNightDetailPage() {
       <div className="flex gap-3 flex-wrap">
         <Link to={`/admin/league-nights/${night.id}/checkin`} className="btn-primary">Check-In & Cards</Link>
         <Link to={`/admin/league-nights/${night.id}/payout`} className="btn-secondary">💰 Payout Calculator</Link>
-        <Link to={`/scoring/${night.id}`} className="btn-secondary">Enter Scores</Link>
+        <Link to={`/admin/league-nights/${night.id}/scoring`} className="btn-secondary">Enter Scores</Link>
         <Link to={`/league-nights/${night.id}/leaderboard`} className="btn-secondary">View Leaderboard</Link>
         <a href={`/api/admin/league-nights/${night.id}/export/csv`} className="btn-secondary">Export CSV</a>
       </div>
@@ -174,7 +174,7 @@ export default function AdminLeagueNightDetailPage() {
               return (
                 <Link
                   key={card.id}
-                  to={`/scoring/${night.id}?card=${card.id}`}
+                  to={`/admin/league-nights/${night.id}/scoring?card=${card.id}`}
                   className="flex items-center gap-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 >
                   <div className="flex-1 min-w-0">

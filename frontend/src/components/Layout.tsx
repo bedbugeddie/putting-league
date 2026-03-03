@@ -3,6 +3,7 @@ import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { authStore, useAuth } from '../store/auth'
 import { api } from '../api/client'
+import { useTheme, type ThemeMode } from '../store/theme'
 import PullToRefresh from './PullToRefresh'
 import Avatar from './ui/Avatar'
 
@@ -11,8 +12,15 @@ const navLinks = [
   { to: '/stats', label: 'Stats' },
 ]
 
+const THEME_OPTIONS: { mode: ThemeMode; icon: string; label: string }[] = [
+  { mode: 'light',  icon: '☀️', label: 'Light'  },
+  { mode: 'dark',   icon: '🌙', label: 'Dark'   },
+  { mode: 'system', icon: '💻', label: 'System' },
+]
+
 export default function Layout() {
   const { user, isAuthenticated, isAdmin } = useAuth()
+  const { mode: themeMode, setMode: setThemeMode } = useTheme()
   const [menuOpen, setMenuOpen] = useState(false)       // mobile drawer
   const [userMenuOpen, setUserMenuOpen] = useState(false) // desktop dropdown
   const navigate = useNavigate()
@@ -117,7 +125,7 @@ export default function Layout() {
                     </button>
 
                     {userMenuOpen && (
-                      <div className="absolute right-0 top-full mt-2 w-48 rounded-xl shadow-xl bg-white dark:bg-forest-surface border border-gray-100 dark:border-forest-border text-gray-800 dark:text-gray-100 text-sm z-50 overflow-hidden">
+                      <div className="absolute right-0 top-full mt-2 w-52 rounded-xl shadow-xl bg-white dark:bg-forest-surface border border-gray-100 dark:border-forest-border text-gray-800 dark:text-gray-100 text-sm z-50 overflow-hidden">
                         {/* User info header */}
                         <div className="flex items-center gap-2.5 px-3 py-3 border-b border-gray-100 dark:border-forest-border">
                           <Avatar name={user?.name ?? ''} avatarDataUrl={user?.avatarDataUrl} size="sm" />
@@ -148,6 +156,28 @@ export default function Layout() {
                             Admin Panel
                           </NavLink>
                         )}
+
+                        {/* Theme selector */}
+                        <div className="border-t border-gray-100 dark:border-forest-border px-3 py-2.5">
+                          <p className="text-xs text-gray-400 mb-1.5">Theme</p>
+                          <div className="flex gap-1">
+                            {THEME_OPTIONS.map(({ mode, icon, label }) => (
+                              <button
+                                key={mode}
+                                onClick={() => setThemeMode(mode)}
+                                className={`flex-1 flex flex-col items-center gap-0.5 py-1.5 rounded text-xs transition-colors ${
+                                  themeMode === mode
+                                    ? 'bg-brand-600 text-white'
+                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                }`}
+                              >
+                                <span>{icon}</span>
+                                <span>{label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
                         <div className="border-t border-gray-100 dark:border-forest-border">
                           <button
                             onClick={() => { closeUser(); signOut() }}
@@ -214,6 +244,28 @@ export default function Layout() {
                 Admin Panel
               </NavLink>
             )}
+
+            {/* Mobile theme selector */}
+            <div className="py-3 border-b border-brand-700 dark:border-forest-border">
+              <p className="text-xs text-brand-300 mb-2">Theme</p>
+              <div className="flex gap-2">
+                {THEME_OPTIONS.map(({ mode, icon, label }) => (
+                  <button
+                    key={mode}
+                    onClick={() => setThemeMode(mode)}
+                    className={`flex-1 flex flex-col items-center gap-0.5 py-1.5 rounded text-xs transition-colors ${
+                      themeMode === mode
+                        ? 'bg-brand-500 text-white'
+                        : 'bg-brand-700 dark:bg-forest-mid text-brand-200 hover:bg-brand-600'
+                    }`}
+                  >
+                    <span>{icon}</span>
+                    <span>{label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <button
               onClick={() => { signOut(); close() }}
               className="block w-full text-left py-3 text-sm text-red-400 border-b border-brand-700"

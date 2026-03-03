@@ -99,6 +99,7 @@ export default function App() {
         <Route path="league-nights" element={<AdminLeagueNightsPage />} />
         <Route path="league-nights/:id" element={<AdminLeagueNightDetailPage />} />
         <Route path="league-nights/:id/checkin" element={<AdminCheckInPage />} />
+        <Route path="league-nights/:id/scoring" element={<ScoringPage adminMode={true} />} />
         <Route path="league-nights/:id/payout" element={<AdminPayoutPage />} />
         <Route path="financials" element={<AdminSeasonFinancialsPage />} />
         <Route path="settings" element={<AdminSettingsPage />} />
