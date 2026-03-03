@@ -59,9 +59,10 @@ export async function checkInRoutes(app: FastifyInstance) {
     if (!player) return reply.status(204).send()
 
     await prisma.$transaction([
+      // Delete the check-in record
       prisma.checkIn.deleteMany({ where: { leagueNightId: id, playerId: player.id } }),
-      prisma.card.updateMany({ where: { leagueNightId: id, scorekeeperId: player.id }, data: { scorekeeperId: null } }),
-      prisma.cardPlayer.deleteMany({ where: { playerId: player.id, card: { leagueNightId: id } } }),
+      // Mark them as having left on any card they're on — do NOT remove them from the card
+      prisma.cardPlayer.updateMany({ where: { playerId: player.id, card: { leagueNightId: id } }, data: { hasLeft: true } }),
     ])
     return reply.status(204).send()
   })

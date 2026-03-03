@@ -159,12 +159,13 @@ model Card {
 }
 
 model CardPlayer {
-  id        String @id @default(cuid())
+  id        String  @id @default(cuid())
   cardId    String
-  card      Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  card      Card    @relation(fields: [cardId], references: [id], onDelete: Cascade)
   playerId  String
-  player    Player @relation(fields: [playerId], references: [id])
-  sortOrder Int    @default(0)
+  player    Player  @relation(fields: [playerId], references: [id])
+  sortOrder Int     @default(0)
+  hasLeft   Boolean @default(false)
 
   @@unique([cardId, playerId])
 }

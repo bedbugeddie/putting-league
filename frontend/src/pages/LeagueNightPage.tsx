@@ -226,15 +226,20 @@ export default function LeagueNightPage() {
                 key={cp.id}
                 className={clsx(
                   'px-3 py-1 rounded-full text-sm font-medium',
-                  cp.playerId === myPlayerId
-                    ? 'bg-brand-100 text-brand-800 dark:bg-forest-mid dark:text-brand-100'
-                    : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                  cp.hasLeft
+                    ? 'bg-gray-100 text-gray-400 line-through dark:bg-gray-800 dark:text-gray-600'
+                    : cp.playerId === myPlayerId
+                      ? 'bg-brand-100 text-brand-800 dark:bg-forest-mid dark:text-brand-100'
+                      : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
                 )}
               >
                 {cp.player.user.name}
-                {cp.playerId === myCard.scorekeeperId && (
-                  <span className="ml-1 text-xs opacity-70">📋</span>
-                )}
+                {cp.hasLeft
+                  ? <span className="ml-1 text-xs no-underline">🚶</span>
+                  : cp.playerId === myCard.scorekeeperId && (
+                    <span className="ml-1 text-xs opacity-70">📋</span>
+                  )
+                }
               </span>
             ))}
           </div>

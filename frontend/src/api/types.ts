@@ -221,6 +221,7 @@ export interface CardPlayer {
   cardId: string
   playerId: string
   player: Player
+  hasLeft: boolean
 }
 
 export interface Card {

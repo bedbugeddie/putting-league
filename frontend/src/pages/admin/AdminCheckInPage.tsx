@@ -427,9 +427,18 @@ export default function AdminCheckInPage() {
                     {card.players.map(cp => {
                       const checkIn = checkedInMap.get(cp.player.id)
                       return (
-                        <div key={cp.id} className="flex items-center justify-between text-sm bg-gray-50 px-3 py-1.5 rounded dark:bg-gray-700/50">
-                          <span className={cp.player.id === card.scorekeeperId ? 'font-medium text-brand-700 dark:text-brand-300' : ''}>
+                        <div key={cp.id} className={clsx(
+                          'flex items-center justify-between text-sm px-3 py-1.5 rounded',
+                          cp.hasLeft
+                            ? 'bg-gray-100 dark:bg-gray-800/60 opacity-60'
+                            : 'bg-gray-50 dark:bg-gray-700/50'
+                        )}>
+                          <span className={clsx(
+                            cp.player.id === card.scorekeeperId ? 'font-medium text-brand-700 dark:text-brand-300' : '',
+                            cp.hasLeft && 'line-through text-gray-400 dark:text-gray-500'
+                          )}>
                             {cp.player.user.name}
+                            {cp.hasLeft && <span className="ml-1.5 text-xs no-underline not-italic font-medium text-orange-500 dark:text-orange-400">(left)</span>}
                           </span>
                           <div className="flex items-center gap-2">
                             {checkIn?.hasPaid && (
