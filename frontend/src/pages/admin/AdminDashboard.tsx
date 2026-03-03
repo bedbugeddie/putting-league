@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../../api/client'
 import type { LeagueNight, Season } from '../../api/types'
 import StatusBadge from '../../components/ui/StatusBadge'
 import { format } from 'date-fns'
 
 export default function AdminDashboard() {
+  const navigate = useNavigate()
   const { data: nightsData } = useQuery<{ leagueNights: LeagueNight[] }>({
     queryKey: ['league-nights'],
     queryFn: () => api.get('/league-nights'),
@@ -23,12 +24,15 @@ export default function AdminDashboard() {
       <h1 className="text-3xl font-bold">Admin Dashboard</h1>
 
       {active && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center justify-between">
+        <div
+          onClick={() => navigate(`/admin/league-nights/${active.id}`)}
+          className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center justify-between hover:border-green-300 transition-colors cursor-pointer"
+        >
           <div>
             <p className="font-semibold text-green-800">● Active League Night</p>
             <p className="text-sm text-green-700">{format(new Date(active.date), 'EEEE, MMMM d, yyyy')}</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2" onClick={e => e.stopPropagation()}>
             <Link to={`/scoring/${active.id}`} className="btn-primary text-sm">Enter Scores</Link>
             <Link to={`/league-nights/${active.id}/leaderboard`} className="btn-secondary text-sm">Leaderboard</Link>
           </div>
