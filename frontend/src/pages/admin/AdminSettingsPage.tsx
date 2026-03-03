@@ -50,7 +50,7 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="space-y-6 max-w-lg">
-      <Link to="/admin" className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 inline-block mb-1">← Dashboard</Link>
+      <Link to="/admin" className="text-sm text-brand-600 hover:underline">← Dashboard</Link>
       <h1 className="text-2xl font-bold">League Settings</h1>
 
       {/* Fee split card */}
