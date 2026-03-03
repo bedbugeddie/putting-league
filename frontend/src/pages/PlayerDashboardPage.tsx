@@ -104,7 +104,7 @@ function LiveDivisionStandings({ night, scores, myPlayerId, myDivisionId }: {
                   <tr
                     key={player.id}
                     className={`border-b border-gray-100 dark:border-gray-700 last:border-0 ${
-                      isMe ? 'bg-brand-50 dark:bg-brand-900/20' : ''
+                      isMe ? 'bg-brand-50 dark:bg-forest-surface' : ''
                     }`}
                   >
                     <td className="px-3 py-2.5 text-gray-400 text-xs font-mono">{idx + 1}</td>
@@ -248,7 +248,7 @@ function LiveScorecard({ night, myCard, scores, myPlayerId }: {
                       <tr
                         key={player.id}
                         className={`border-b border-gray-100 dark:border-gray-700 last:border-0 ${
-                          isMe ? 'bg-brand-50 dark:bg-brand-900/20' : ''
+                          isMe ? 'bg-brand-50 dark:bg-forest-surface' : ''
                         }`}
                       >
                         <td className="px-3 py-2.5 whitespace-nowrap">

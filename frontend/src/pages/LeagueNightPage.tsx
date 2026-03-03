@@ -112,7 +112,7 @@ export default function LeagueNightPage() {
         <div className={clsx(
           'rounded-xl p-4 flex items-center justify-between',
           iAmCheckedIn
-            ? 'bg-brand-50 border border-brand-200 dark:bg-brand-900/30 dark:border-brand-800'
+            ? 'bg-brand-50 border border-brand-200 dark:bg-forest-mid dark:border-brand-700'
             : 'bg-yellow-50 border border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800'
         )}>
           <div>
@@ -173,7 +173,7 @@ export default function LeagueNightPage() {
 
           {/* Scorekeeper status */}
           {iAmScorekeeper ? (
-            <div className="mb-3 px-3 py-2 bg-brand-50 border border-brand-200 rounded-lg dark:bg-brand-900/30 dark:border-brand-800">
+            <div className="mb-3 px-3 py-2 bg-brand-50 border border-brand-200 rounded-lg dark:bg-forest-mid dark:border-brand-700">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold text-brand-800 dark:text-brand-200">📋 You're the scorekeeper for this card</p>
@@ -227,7 +227,7 @@ export default function LeagueNightPage() {
                 className={clsx(
                   'px-3 py-1 rounded-full text-sm font-medium',
                   cp.playerId === myPlayerId
-                    ? 'bg-brand-100 text-brand-800 dark:bg-brand-900/40 dark:text-brand-200'
+                    ? 'bg-brand-100 text-brand-800 dark:bg-forest-mid dark:text-brand-100'
                     : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
                 )}
               >
