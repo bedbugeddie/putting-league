@@ -40,12 +40,19 @@ export async function checkInRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: 'No player profile found. Ask an admin to add you.' })
     }
 
-    const checkIn = await prisma.checkIn.upsert({
-      where: { leagueNightId_playerId: { leagueNightId: id, playerId: player.id } },
-      create: { leagueNightId: id, playerId: player.id, checkedInBy: req.user!.userId },
-      update: {},
-      include: { player: { include: { user: true, division: true } } },
-    })
+    const [checkIn] = await prisma.$transaction([
+      prisma.checkIn.upsert({
+        where: { leagueNightId_playerId: { leagueNightId: id, playerId: player.id } },
+        create: { leagueNightId: id, playerId: player.id, checkedInBy: req.user!.userId },
+        update: {},
+        include: { player: { include: { user: true, division: true } } },
+      }),
+      // If they were previously marked as left on a card, restore them
+      prisma.cardPlayer.updateMany({
+        where: { playerId: player.id, card: { leagueNightId: id }, hasLeft: true },
+        data: { hasLeft: false },
+      }),
+    ])
     return reply.status(201).send({ checkIn })
   })
 
@@ -72,12 +79,19 @@ export async function checkInRoutes(app: FastifyInstance) {
     const { id } = req.params as { id: string }
     const { playerId } = checkInSchema.parse(req.body)
 
-    const checkIn = await prisma.checkIn.upsert({
-      where: { leagueNightId_playerId: { leagueNightId: id, playerId } },
-      create: { leagueNightId: id, playerId, checkedInBy: req.user!.userId },
-      update: { checkedInBy: req.user!.userId },
-      include: { player: { include: { user: true, division: true } } },
-    })
+    const [checkIn] = await prisma.$transaction([
+      prisma.checkIn.upsert({
+        where: { leagueNightId_playerId: { leagueNightId: id, playerId } },
+        create: { leagueNightId: id, playerId, checkedInBy: req.user!.userId },
+        update: { checkedInBy: req.user!.userId },
+        include: { player: { include: { user: true, division: true } } },
+      }),
+      // If they were previously marked as left on a card, restore them
+      prisma.cardPlayer.updateMany({
+        where: { playerId, card: { leagueNightId: id }, hasLeft: true },
+        data: { hasLeft: false },
+      }),
+    ])
     return reply.status(201).send({ checkIn })
   })
 

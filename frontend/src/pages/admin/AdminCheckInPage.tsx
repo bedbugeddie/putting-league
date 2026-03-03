@@ -51,7 +51,10 @@ export default function AdminCheckInPage() {
   const checkInMut = useMutation({
     mutationFn: (playerId: string) =>
       api.post(`/league-nights/${id}/checkins`, { playerId }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['checkins', id] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['checkins', id] })
+      qc.invalidateQueries({ queryKey: ['cards', id] })
+    },
     onError: (e: any) => toast.error(e.message),
   })
 
