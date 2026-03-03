@@ -96,7 +96,7 @@ export default function AdminLeagueNightDetailPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <Link to="/admin/league-nights" className="text-sm text-brand-600 hover:underline">← All Nights</Link>
+          <Link to="/admin" className="text-sm text-brand-600 hover:underline">← Dashboard</Link>
           <h1 className="text-2xl font-bold mt-1">{format(new Date(night.date), 'EEEE, MMMM d, yyyy h:mm a')}</h1>
           <p className="text-gray-500 text-sm">{night.season?.name}</p>
         </div>
