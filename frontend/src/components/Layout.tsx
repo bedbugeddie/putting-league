@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom'
+import { Outlet, NavLink, Link, useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { authStore, useAuth } from '../store/auth'
 import { api } from '../api/client'
@@ -27,8 +27,19 @@ export default function Layout() {
   const [menuOpen, setMenuOpen] = useState(false)       // mobile drawer
   const [userMenuOpen, setUserMenuOpen] = useState(false) // desktop dropdown
   const navigate = useNavigate()
+  const location = useLocation()
   const queryClient = useQueryClient()
   const userMenuRef = useRef<HTMLDivElement>(null)
+
+  // True when a logged-in user hasn't yet acknowledged the league info
+  const needsAck = isAuthenticated && !user?.hasAcknowledgedInfo
+
+  // Force unacknowledged users to stay on /info
+  useEffect(() => {
+    if (needsAck && location.pathname !== '/info') {
+      navigate('/info', { replace: true })
+    }
+  }, [needsAck, location.pathname, navigate])
 
   const handleRefresh = useCallback(
     () => queryClient.invalidateQueries(),
@@ -107,19 +118,19 @@ export default function Layout() {
                 className={({ isActive }) => isActive ? 'font-semibold underline' : 'hover:underline'}>
                 League Info
               </NavLink>
-              {isAuthenticated && (
+              {isAuthenticated && !needsAck && (
                 <NavLink to={currentEventTo} end={currentEventEnd}
                   className={({ isActive }) => isActive ? 'font-semibold underline' : 'hover:underline'}>
                   Current Event
                 </NavLink>
               )}
-              {isAuthenticated && navLinks.map(l => (
+              {isAuthenticated && !needsAck && navLinks.map(l => (
                 <NavLink key={l.to} to={l.to} end={l.end}
                   className={({ isActive }) => isActive ? 'font-semibold underline' : 'hover:underline'}>
                   {l.label}
                 </NavLink>
               ))}
-              {isAuthenticated && (
+              {isAuthenticated && !needsAck && (
                 <>
                   {activeNightId && (
                     <NavLink to={`/scoring/${activeNightId}`}
@@ -231,7 +242,7 @@ export default function Layout() {
               >
                 Info
               </NavLink>
-              {isAuthenticated ? (
+              {isAuthenticated && !needsAck ? (
                 <button
                   onClick={() => setMenuOpen(o => !o)}
                   className="flex items-center p-1 rounded hover:bg-brand-600 transition-colors"
@@ -323,7 +334,7 @@ export default function Layout() {
       <MotdModal />
 
       {/* ── Phone nag modal (shown every session until user adds a phone number) ── */}
-      <PhoneNagModal />
+      {!needsAck && <PhoneNagModal />}
 
       {/* ── Content ── */}
       <PullToRefresh onRefresh={handleRefresh}>
