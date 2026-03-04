@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../../api/client'
-import type { LeagueNight, Season } from '../../api/types'
+import type { LeagueNight } from '../../api/types'
 import StatusBadge from '../../components/ui/StatusBadge'
 import { format } from 'date-fns'
 
@@ -17,6 +17,10 @@ export default function AdminDashboard() {
   const nights = allNights
     .filter(n => n.status === 'SCHEDULED' || n.status === 'IN_PROGRESS')
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .slice(0, 5)
+  const pastNights = allNights
+    .filter(n => n.status === 'COMPLETED')
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 5)
 
   return (
@@ -54,20 +58,39 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      {/* Recent nights */}
-      <div className="card">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold">Upcoming League Nights</h2>
-          <Link to="/admin/league-nights" className="text-sm text-brand-600 hover:underline">View all →</Link>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Upcoming nights */}
+        <div className="card">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold">Upcoming League Nights</h2>
+            <Link to="/admin/league-nights" className="text-sm text-brand-600 hover:underline">View all →</Link>
+          </div>
+          <div className="space-y-2">
+            {nights.map(n => (
+              <Link key={n.id} to={`/admin/league-nights/${n.id}`} className="flex items-center justify-between p-2 rounded hover:bg-gray-50">
+                <span className="text-sm font-medium">{format(new Date(n.date), 'MMM d, yyyy')}</span>
+                <StatusBadge status={n.status} />
+              </Link>
+            ))}
+            {nights.length === 0 && <p className="text-gray-400 text-sm">No upcoming league nights.</p>}
+          </div>
         </div>
-        <div className="space-y-2">
-          {nights.map(n => (
-            <Link key={n.id} to={`/admin/league-nights/${n.id}`} className="flex items-center justify-between p-2 rounded hover:bg-gray-50">
-              <span className="text-sm font-medium">{format(new Date(n.date), 'MMM d, yyyy')}</span>
-              <StatusBadge status={n.status} />
-            </Link>
-          ))}
-          {nights.length === 0 && <p className="text-gray-400 text-sm">No upcoming league nights.</p>}
+
+        {/* Past nights */}
+        <div className="card">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold">Past League Nights</h2>
+            <Link to="/admin/league-nights" className="text-sm text-brand-600 hover:underline">View all →</Link>
+          </div>
+          <div className="space-y-2">
+            {pastNights.map(n => (
+              <Link key={n.id} to={`/admin/league-nights/${n.id}`} className="flex items-center justify-between p-2 rounded hover:bg-gray-50">
+                <span className="text-sm font-medium">{format(new Date(n.date), 'MMM d, yyyy')}</span>
+                <StatusBadge status={n.status} />
+              </Link>
+            ))}
+            {pastNights.length === 0 && <p className="text-gray-400 text-sm">No completed league nights.</p>}
+          </div>
         </div>
       </div>
     </div>
