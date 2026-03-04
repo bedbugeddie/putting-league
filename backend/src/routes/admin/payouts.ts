@@ -73,21 +73,10 @@ export function calcDivisionPayouts(
   for (const group of groups) {
     const pctSlice = percentages.slice(placeOffset, placeOffset + group.length)
     const combinedPct = pctSlice.reduce((a, b) => a + b, 0)
-    groupAmounts.push({ group, combinedAmount: Math.round(pool * combinedPct) })
+    groupAmounts.push({ group, combinedAmount: Math.floor(pool * combinedPct) })
     placeOffset += group.length
   }
-
-  // Adjust last paid group so total exactly equals pool (handles rounding drift)
-  let lastPaidIdx = -1
-  for (let i = groupAmounts.length - 1; i >= 0; i--) {
-    if (groupAmounts[i].combinedAmount > 0) { lastPaidIdx = i; break }
-  }
-  if (lastPaidIdx >= 0) {
-    const othersTotal = groupAmounts
-      .slice(0, lastPaidIdx)
-      .reduce((sum, ga) => sum + ga.combinedAmount, 0)
-    groupAmounts[lastPaidIdx].combinedAmount = pool - othersTotal
-  }
+  // Note: flooring means sum(groupAmounts) ≤ pool; the difference flows to EOY at the call site.
 
   // Build result entries
   const result: PayoutEntry[] = []
@@ -98,16 +87,15 @@ export function calcDivisionPayouts(
 
     if (isTied && combinedAmount > 0) {
       if (tieBreakerMode === 'SPLIT') {
-        // Split prize evenly; last tied player absorbs any rounding remainder
+        // Split prize evenly; each player gets floored amount — remainder flows to EOY
         const baseAmount = Math.floor(combinedAmount / group.length)
-        const remainder = combinedAmount - baseAmount * group.length
         for (let i = 0; i < group.length; i++) {
           result.push({
             place: placeOffset + 1,
             playerId: group[i].playerId,
             playerName: group[i].playerName,
             totalScore: group[i].totalScore,
-            payout: i === group.length - 1 ? baseAmount + remainder : baseAmount,
+            payout: baseAmount,
             isTied: true,
             pendingPuttOff: false,
           })
@@ -220,8 +208,8 @@ export async function payoutRoutes(app: FastifyInstance) {
       const paidCount       = div.paidPlayerIds.size
       const grossCollected  = Math.round(paidCount * div.entryFee)
       const houseTotal      = paidCount * housePerEntry
-      const eoyTotal        = paidCount * eoyPerEntry
-      const pool            = Math.max(0, grossCollected - houseTotal - eoyTotal)
+      const eoyBase         = paidCount * eoyPerEntry
+      const pool            = Math.max(0, grossCollected - houseTotal - eoyBase)
       const percentages     = getPayoutPercentages(paidCount)
 
       // Only rank paid players for payout purposes
@@ -236,6 +224,10 @@ export async function payoutRoutes(app: FastifyInstance) {
         leagueNight.tieBreakerMode,
         puttOffWinnerId,
       )
+
+      // Cents not paid out (from floor-rounding) roll into EOY
+      const payoutRemainder = pool - payouts.reduce((sum, p) => sum + p.payout, 0)
+      const eoyTotal        = eoyBase + payoutRemainder
 
       divisions.push({
         divisionId: div.divisionId,
