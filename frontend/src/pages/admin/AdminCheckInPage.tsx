@@ -318,6 +318,57 @@ export default function AdminCheckInPage() {
                             </span>
                           </button>
 
+                          {/* Division selector */}
+                          {isIn && (
+                            <select
+                              value={p.divisionId ?? ''}
+                              onChange={e => changeDivisionMut.mutate({ playerId: p.id, divisionId: e.target.value || null })}
+                              title="Change division"
+                              className={clsx(
+                                'shrink-0 h-12 px-1.5 rounded-lg border text-xs font-semibold cursor-pointer transition-colors',
+                                p.divisionId
+                                  ? 'bg-brand-50 border-brand-300 text-brand-700 dark:bg-brand-800 dark:border-brand-600 dark:text-brand-100'
+                                  : 'bg-white border-gray-200 text-gray-400 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-500'
+                              )}
+                            >
+                              <option value="">— div —</option>
+                              {allDivisions.map(d => (
+                                <option key={d.id} value={d.id}>{d.code}</option>
+                              ))}
+                            </select>
+                          )}
+
+                          {/* Card selector */}
+                          {isIn && cards.length > 0 && (() => {
+                            const currentCard = cards.find(c => c.players.some(cp => cp.playerId === p.id && !cp.hasLeft))
+                            return (
+                              <select
+                                value={currentCard?.id ?? ''}
+                                onChange={e => {
+                                  const toCardId = e.target.value
+                                  if (!toCardId || toCardId === currentCard?.id) return
+                                  if (currentCard) {
+                                    movePlayerMut.mutate({ playerId: p.id, fromCardId: currentCard.id, toCardId })
+                                  } else {
+                                    addToCardMut.mutate({ cardId: toCardId, playerId: p.id })
+                                  }
+                                }}
+                                title="Change card"
+                                className={clsx(
+                                  'shrink-0 h-12 px-1.5 rounded-lg border text-xs font-semibold cursor-pointer transition-colors',
+                                  currentCard
+                                    ? 'bg-amber-50 border-amber-300 text-amber-700 dark:bg-amber-800 dark:border-amber-600 dark:text-amber-100'
+                                    : 'bg-white border-dashed border-gray-300 text-gray-400 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-500'
+                                )}
+                              >
+                                <option value="">— card —</option>
+                                {cards.map(c => (
+                                  <option key={c.id} value={c.id}>{c.name}</option>
+                                ))}
+                              </select>
+                            )
+                          })()}
+
                           {/* Payment toggle — only visible when checked in */}
                           {isIn && (
                             <button
@@ -388,6 +439,57 @@ export default function AdminCheckInPage() {
                               {isIn ? '✓ In' : 'Out'}
                             </span>
                           </button>
+                          {/* Division selector */}
+                          {isIn && (
+                            <select
+                              value={p.divisionId ?? ''}
+                              onChange={e => changeDivisionMut.mutate({ playerId: p.id, divisionId: e.target.value || null })}
+                              title="Change division"
+                              className={clsx(
+                                'shrink-0 h-12 px-1.5 rounded-lg border text-xs font-semibold cursor-pointer transition-colors',
+                                p.divisionId
+                                  ? 'bg-brand-50 border-brand-300 text-brand-700 dark:bg-brand-800 dark:border-brand-600 dark:text-brand-100'
+                                  : 'bg-white border-gray-200 text-gray-400 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-500'
+                              )}
+                            >
+                              <option value="">— div —</option>
+                              {allDivisions.map(d => (
+                                <option key={d.id} value={d.id}>{d.code}</option>
+                              ))}
+                            </select>
+                          )}
+
+                          {/* Card selector */}
+                          {isIn && cards.length > 0 && (() => {
+                            const currentCard = cards.find(c => c.players.some(cp => cp.playerId === p.id && !cp.hasLeft))
+                            return (
+                              <select
+                                value={currentCard?.id ?? ''}
+                                onChange={e => {
+                                  const toCardId = e.target.value
+                                  if (!toCardId || toCardId === currentCard?.id) return
+                                  if (currentCard) {
+                                    movePlayerMut.mutate({ playerId: p.id, fromCardId: currentCard.id, toCardId })
+                                  } else {
+                                    addToCardMut.mutate({ cardId: toCardId, playerId: p.id })
+                                  }
+                                }}
+                                title="Change card"
+                                className={clsx(
+                                  'shrink-0 h-12 px-1.5 rounded-lg border text-xs font-semibold cursor-pointer transition-colors',
+                                  currentCard
+                                    ? 'bg-amber-50 border-amber-300 text-amber-700 dark:bg-amber-800 dark:border-amber-600 dark:text-amber-100'
+                                    : 'bg-white border-dashed border-gray-300 text-gray-400 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-500'
+                                )}
+                              >
+                                <option value="">— card —</option>
+                                {cards.map(c => (
+                                  <option key={c.id} value={c.id}>{c.name}</option>
+                                ))}
+                              </select>
+                            )
+                          })()}
+
                           {isIn && (
                             <button
                               onClick={() => paymentMut.mutate({ playerId: p.id, hasPaid: !hasPaid })}
