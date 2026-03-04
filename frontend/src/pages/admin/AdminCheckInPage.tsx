@@ -13,6 +13,8 @@ export default function AdminCheckInPage() {
   const [minPlayersPerCard, setMinPlayersPerCard] = useState(3)
   const [shuffle, setShuffle] = useState(true)
   const [showUnpaidOnly, setShowUnpaidOnly] = useState(false)
+  const [sortBy, setSortBy] = useState<'first' | 'last'>('first')
+  const [groupByDivision, setGroupByDivision] = useState(true)
 
   const { data: nightData } = useQuery<{ leagueNight: LeagueNight }>({
     queryKey: ['league-night', id],
@@ -168,9 +170,32 @@ export default function AdminCheckInPage() {
   const totalEoy    = paidCount * eoyPerEntry
   const totalPool   = Math.max(0, totalGross - totalHouse - totalEoy)
 
-  // Group all players by division for the check-in list
+  // Sort all players by first or last name
+  function getLastName(name: string) {
+    const parts = name.trim().split(/\s+/)
+    return parts.length > 1 ? parts[parts.length - 1] : name
+  }
+  function displayName(name: string) {
+    if (sortBy !== 'last') return name
+    const parts = name.trim().split(/\s+/)
+    if (parts.length < 2) return name
+    const last = parts[parts.length - 1]
+    const first = parts.slice(0, parts.length - 1).join(' ')
+    return `${last}, ${first}`
+  }
+  const sortedPlayers = [...allPlayers].sort((a, b) => {
+    const ka = sortBy === 'last'
+      ? getLastName(a.user.name).toLowerCase() + ' ' + a.user.name.toLowerCase()
+      : a.user.name.toLowerCase()
+    const kb = sortBy === 'last'
+      ? getLastName(b.user.name).toLowerCase() + ' ' + b.user.name.toLowerCase()
+      : b.user.name.toLowerCase()
+    return ka.localeCompare(kb)
+  })
+
+  // Group by division for the check-in list
   const byDivision = new Map<string, Player[]>()
-  for (const p of allPlayers) {
+  for (const p of sortedPlayers) {
     const key = p.division?.code ?? '(No Division)'
     if (!byDivision.has(key)) byDivision.set(key, [])
     byDivision.get(key)!.push(p)
@@ -202,12 +227,43 @@ export default function AdminCheckInPage() {
               💰 Payout Calculator
             </Link>
           </div>
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-500">Toggle players present tonight. Use the $ button to mark entry fee payment.</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm text-gray-500 flex-1 min-w-[160px]">Toggle players present tonight. Use $ to mark entry fee payment.</p>
+            {/* Sort controls */}
+            <div className="flex items-center gap-1 shrink-0">
+              <span className="text-xs text-gray-400 mr-0.5">Sort:</span>
+              {(['first', 'last'] as const).map(s => (
+                <button
+                  key={s}
+                  onClick={() => setSortBy(s)}
+                  className={clsx(
+                    'text-xs px-2.5 py-1.5 rounded-lg border transition-colors',
+                    sortBy === s
+                      ? 'bg-brand-100 border-brand-400 text-brand-800 dark:bg-brand-600 dark:border-brand-500 dark:text-white'
+                      : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:border-gray-500'
+                  )}
+                >
+                  {s === 'first' ? 'First' : 'Last'}
+                </button>
+              ))}
+            </div>
+            {/* Group by division toggle */}
+            <button
+              onClick={() => setGroupByDivision(v => !v)}
+              className={clsx(
+                'text-xs px-3 py-1.5 rounded-lg border transition-colors shrink-0',
+                groupByDivision
+                  ? 'bg-brand-100 border-brand-400 text-brand-800 dark:bg-brand-600 dark:border-brand-500 dark:text-white'
+                  : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:border-gray-500'
+              )}
+            >
+              {groupByDivision ? 'By Division ✓' : 'By Division'}
+            </button>
+            {/* Unpaid only toggle */}
             <button
               onClick={() => setShowUnpaidOnly(v => !v)}
               className={clsx(
-                'text-xs px-3 py-1.5 rounded-lg border transition-colors shrink-0 ml-3',
+                'text-xs px-3 py-1.5 rounded-lg border transition-colors shrink-0',
                 showUnpaidOnly
                   ? 'bg-amber-50 border-amber-300 text-amber-700 dark:bg-amber-900/30 dark:border-amber-700 dark:text-amber-300'
                   : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400'
@@ -217,72 +273,143 @@ export default function AdminCheckInPage() {
             </button>
           </div>
 
-          {divisions.map(([divCode, players]) => {
-            const divCheckIns = players.filter(p => checkedInMap.has(p.id))
-            const divPaid = divCheckIns.filter(p => checkedInMap.get(p.id)?.hasPaid).length
-            const entryFee = players[0]?.division?.entryFee ?? 0
-            // When filtering, only show players who are checked-in and haven't paid
-            const visiblePlayers = showUnpaidOnly
-              ? players.filter(p => checkedInMap.has(p.id) && !checkedInMap.get(p.id)?.hasPaid)
-              : players
-            if (showUnpaidOnly && visiblePlayers.length === 0) return null
-            return (
-              <div key={divCode} className="card">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold text-gray-500">
-                    {divCode}{players[0]?.division?.name ? ` — ${players[0].division.name}` : ''}
-                  </h3>
-                  {divCheckIns.length > 0 && (
-                    <span className="text-xs text-gray-400">
-                      {divPaid}/{divCheckIns.length} paid · ${(divPaid * entryFee).toFixed(0)} pool
-                    </span>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  {visiblePlayers.map(p => {
-                    const checkIn = checkedInMap.get(p.id)
-                    const isIn = !!checkIn
-                    const hasPaid = checkIn?.hasPaid ?? false
-                    return (
-                      <div key={p.id} className="flex items-center gap-2">
-                        {/* Check-in toggle */}
-                        <button
-                          onClick={() => isIn ? checkOutMut.mutate(p.id) : checkInMut.mutate(p.id)}
-                          className={clsx(
-                            'flex-1 flex items-center justify-between px-4 py-3 rounded-lg border text-sm transition-colors min-h-[48px]',
-                            isIn
-                              ? 'bg-brand-100 border-brand-400 text-brand-900 dark:bg-forest-mid dark:border-brand-700 dark:text-brand-100'
-                              : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 dark:bg-forest-surface dark:border-forest-border dark:text-brand-200 dark:hover:bg-forest-mid'
-                          )}
-                        >
-                          <span className="font-medium">{p.user.name}</span>
-                          <span className={clsx('text-sm font-bold', isIn ? 'text-brand-800 dark:text-brand-300' : 'text-gray-400')}>
-                            {isIn ? '✓ In' : 'Out'}
-                          </span>
-                        </button>
-
-                        {/* Payment toggle — only visible when checked in */}
-                        {isIn && (
+          {groupByDivision ? (
+            divisions.map(([divCode, players]) => {
+              const divCheckIns = players.filter(p => checkedInMap.has(p.id))
+              const divPaid = divCheckIns.filter(p => checkedInMap.get(p.id)?.hasPaid).length
+              const entryFee = players[0]?.division?.entryFee ?? 0
+              // When filtering, only show players who are checked-in and haven't paid
+              const visiblePlayers = showUnpaidOnly
+                ? players.filter(p => checkedInMap.has(p.id) && !checkedInMap.get(p.id)?.hasPaid)
+                : players
+              if (showUnpaidOnly && visiblePlayers.length === 0) return null
+              return (
+                <div key={divCode} className="card">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold text-gray-500">
+                      {divCode}{players[0]?.division?.name ? ` — ${players[0].division.name}` : ''}
+                    </h3>
+                    {divCheckIns.length > 0 && (
+                      <span className="text-xs text-gray-400">
+                        {divPaid}/{divCheckIns.length} paid · ${(divPaid * entryFee).toFixed(0)} pool
+                      </span>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    {visiblePlayers.map(p => {
+                      const checkIn = checkedInMap.get(p.id)
+                      const isIn = !!checkIn
+                      const hasPaid = checkIn?.hasPaid ?? false
+                      return (
+                        <div key={p.id} className="flex items-center gap-2">
+                          {/* Check-in toggle */}
                           <button
-                            onClick={() => paymentMut.mutate({ playerId: p.id, hasPaid: !hasPaid })}
-                            title={hasPaid ? 'Mark as unpaid' : 'Mark as paid'}
+                            onClick={() => isIn ? checkOutMut.mutate(p.id) : checkInMut.mutate(p.id)}
                             className={clsx(
-                              'shrink-0 px-3 py-3 rounded-lg border text-sm font-semibold transition-colors min-h-[48px]',
-                              hasPaid
-                                ? 'bg-green-50 border-green-300 text-green-700 dark:bg-green-900/30 dark:border-green-700 dark:text-green-300'
-                                : 'bg-white border-gray-200 text-gray-400 hover:border-green-300 hover:text-green-600 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-500'
+                              'flex-1 flex items-center justify-between px-4 py-3 rounded-lg border text-sm transition-colors min-h-[48px]',
+                              isIn
+                                ? 'bg-brand-100 border-brand-400 text-brand-900 dark:bg-forest-mid dark:border-brand-700 dark:text-brand-100'
+                                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 dark:bg-forest-surface dark:border-forest-border dark:text-brand-200 dark:hover:bg-forest-mid'
                             )}
                           >
-                            {hasPaid ? '$ ✓' : '$'}
+                            <span className="font-medium">{displayName(p.user.name)}</span>
+                            <span className={clsx('text-sm font-bold', isIn ? 'text-brand-800 dark:text-brand-300' : 'text-gray-400')}>
+                              {isIn ? '✓ In' : 'Out'}
+                            </span>
                           </button>
-                        )}
-                      </div>
-                    )
-                  })}
+
+                          {/* Payment toggle — only visible when checked in */}
+                          {isIn && (
+                            <button
+                              onClick={() => paymentMut.mutate({ playerId: p.id, hasPaid: !hasPaid })}
+                              title={hasPaid ? 'Mark as unpaid' : 'Mark as paid'}
+                              className={clsx(
+                                'shrink-0 px-3 py-3 rounded-lg border text-sm font-semibold transition-colors min-h-[48px]',
+                                hasPaid
+                                  ? 'bg-green-50 border-green-300 text-green-700 dark:bg-green-900/30 dark:border-green-700 dark:text-green-300'
+                                  : 'bg-white border-gray-200 text-gray-400 hover:border-green-300 hover:text-green-600 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-500'
+                              )}
+                            >
+                              {hasPaid ? '$ ✓' : '$'}
+                            </button>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
-              </div>
-            )
-          })}
+              )
+            })
+          ) : (
+            /* Flat list — all players sorted, division badge shown inline */
+            (() => {
+              const flatPlayers = sortedPlayers.filter(p =>
+                showUnpaidOnly
+                  ? checkedInMap.has(p.id) && !checkedInMap.get(p.id)?.hasPaid
+                  : true
+              )
+              if (flatPlayers.length === 0) {
+                return (
+                  <div className="card text-center py-6 text-gray-400 text-sm italic">
+                    No players to show.
+                  </div>
+                )
+              }
+              return (
+                <div className="card">
+                  <div className="space-y-2">
+                    {flatPlayers.map(p => {
+                      const checkIn = checkedInMap.get(p.id)
+                      const isIn = !!checkIn
+                      const hasPaid = checkIn?.hasPaid ?? false
+                      return (
+                        <div key={p.id} className="flex items-center gap-2">
+                          <button
+                            onClick={() => isIn ? checkOutMut.mutate(p.id) : checkInMut.mutate(p.id)}
+                            className={clsx(
+                              'flex-1 flex items-center justify-between px-4 py-3 rounded-lg border text-sm transition-colors min-h-[48px]',
+                              isIn
+                                ? 'bg-brand-100 border-brand-400 text-brand-900 dark:bg-forest-mid dark:border-brand-700 dark:text-brand-100'
+                                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 dark:bg-forest-surface dark:border-forest-border dark:text-brand-200 dark:hover:bg-forest-mid'
+                            )}
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <span className="font-medium">{displayName(p.user.name)}</span>
+                              {p.division?.code && (
+                                <span className={clsx(
+                                  'text-xs font-mono',
+                                  isIn ? 'text-brand-600 dark:text-brand-400' : 'text-gray-400'
+                                )}>
+                                  {p.division.code}
+                                </span>
+                              )}
+                            </span>
+                            <span className={clsx('text-sm font-bold', isIn ? 'text-brand-800 dark:text-brand-300' : 'text-gray-400')}>
+                              {isIn ? '✓ In' : 'Out'}
+                            </span>
+                          </button>
+                          {isIn && (
+                            <button
+                              onClick={() => paymentMut.mutate({ playerId: p.id, hasPaid: !hasPaid })}
+                              title={hasPaid ? 'Mark as unpaid' : 'Mark as paid'}
+                              className={clsx(
+                                'shrink-0 px-3 py-3 rounded-lg border text-sm font-semibold transition-colors min-h-[48px]',
+                                hasPaid
+                                  ? 'bg-green-50 border-green-300 text-green-700 dark:bg-green-900/30 dark:border-green-700 dark:text-green-300'
+                                  : 'bg-white border-gray-200 text-gray-400 hover:border-green-300 hover:text-green-600 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-500'
+                              )}
+                            >
+                              {hasPaid ? '$ ✓' : '$'}
+                            </button>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })()
+          )}
         </div>
 
         {/* ── Right: Card management ── */}

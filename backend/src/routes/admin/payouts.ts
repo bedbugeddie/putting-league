@@ -66,7 +66,9 @@ export function calcDivisionPayouts(
     groups.push(group)
   }
 
-  // Compute combined prize amount per group (before remainder adjustment)
+  // Compute combined prize amount per group. Tied players share the sum of the consecutive
+  // prize slots their group occupies (e.g. 2-way tie for 1st shares slots 1+2).
+  // placeOffset advances by group.length so each group consumes the right slice of percentages.
   let placeOffset = 0
   const groupAmounts: { group: RankedPlayer[]; combinedAmount: number }[] = []
 
@@ -78,28 +80,30 @@ export function calcDivisionPayouts(
   }
   // Note: flooring means sum(groupAmounts) ≤ pool; the difference flows to EOY at the call site.
 
-  // Build result entries
+  // Build result entries using dense ranking: each unique score group gets the next
+  // sequential rank (1, 1, 2, 2, 3) rather than standard competition ranking (1, 1, 3, 3, 5).
+  // Payout amounts are still calculated from the combined prize slots the group occupies.
   const result: PayoutEntry[] = []
-  placeOffset = 0
+  let denseRank = 0
 
   for (const { group, combinedAmount } of groupAmounts) {
     const isTied = group.length > 1
+    denseRank++
 
     if (isTied && combinedAmount > 0) {
       if (tieBreakerMode === 'SPLIT') {
         // Split prize evenly; each player gets floored amount — remainder flows to EOY
         const baseAmount = Math.floor(combinedAmount / group.length)
-        for (let i = 0; i < group.length; i++) {
+        for (const p of group) {
           result.push({
-            place: placeOffset + 1,
-            playerId: group[i].playerId,
-            playerName: group[i].playerName,
-            totalScore: group[i].totalScore,
+            place: denseRank,
+            playerId: p.playerId,
+            playerName: p.playerName,
+            totalScore: p.totalScore,
             payout: baseAmount,
             isTied: true,
             pendingPuttOff: false,
           })
-          placeOffset++
         }
       } else {
         // PUTT_OFF mode: resolve if we have a winner, otherwise mark as pending
@@ -110,7 +114,7 @@ export function calcDivisionPayouts(
         for (const p of group) {
           const isWinner = winner?.playerId === p.playerId
           result.push({
-            place: placeOffset + 1,
+            place: denseRank,
             playerId: p.playerId,
             playerName: p.playerName,
             totalScore: p.totalScore,
@@ -118,22 +122,20 @@ export function calcDivisionPayouts(
             isTied: true,
             pendingPuttOff: !winner,
           })
-          placeOffset++
         }
       }
     } else {
       // No tie, or $0 place
       for (const p of group) {
         result.push({
-          place: placeOffset + 1,
+          place: denseRank,
           playerId: p.playerId,
           playerName: p.playerName,
           totalScore: p.totalScore,
           payout: combinedAmount,
-          isTied: false,
+          isTied: isTied,
           pendingPuttOff: false,
         })
-        placeOffset++
       }
     }
   }
@@ -321,7 +323,7 @@ export async function payoutRoutes(app: FastifyInstance) {
     const { housePerEntry, eoyPerEntry } = settings
 
     if (!season) return reply.send({
-      season: null, nights: [], totals: { paidCount: 0, grossCollected: 0, houseTotal: 0, eoyTotal: 0, payoutPool: 0 },
+      season: null, nights: [], totals: { paidCount: 0, grossCollected: 0, houseTotal: 0, eoyTotal: 0, payoutPool: 0, payoutRemainder: 0 },
       settings,
     })
 
@@ -332,37 +334,67 @@ export async function payoutRoutes(app: FastifyInstance) {
       orderBy: { date: 'asc' },
     })
 
-    // Single query: all paid check-ins for the season
+    // Single query: all paid check-ins for the season, grouped by night AND division so we
+    // can compute per-division floor rounding accurately via getPayoutPercentages.
     const paidCheckIns = await prisma.checkIn.findMany({
       where: { leagueNight: { seasonId: season.id }, hasPaid: true },
-      select: { leagueNightId: true, player: { select: { division: { select: { entryFee: true } } } } },
+      select: { leagueNightId: true, player: { select: { division: { select: { id: true, entryFee: true } } } } },
     })
 
-    // Aggregate by night
-    const nightAgg = new Map<string, { paidCount: number; grossCollected: number }>()
+    // Build per-night per-division aggregate
+    const nightDivAgg = new Map<string, Map<string, { paidCount: number; grossCollected: number }>>()
     for (const ci of paidCheckIns) {
-      const fee = ci.player.division?.entryFee ?? 0
-      const cur = nightAgg.get(ci.leagueNightId) ?? { paidCount: 0, grossCollected: 0 }
-      nightAgg.set(ci.leagueNightId, { paidCount: cur.paidCount + 1, grossCollected: cur.grossCollected + fee })
+      const divId = ci.player.division?.id ?? '__none__'
+      const fee   = ci.player.division?.entryFee ?? 0
+      if (!nightDivAgg.has(ci.leagueNightId)) nightDivAgg.set(ci.leagueNightId, new Map())
+      const divMap = nightDivAgg.get(ci.leagueNightId)!
+      const cur    = divMap.get(divId) ?? { paidCount: 0, grossCollected: 0 }
+      divMap.set(divId, { paidCount: cur.paidCount + 1, grossCollected: cur.grossCollected + fee })
+    }
+
+    // Compute the floor rounding that rolls into EOY for a given night.
+    // This is the no-tie approximation: each percentage slot is individually floored.
+    // Actual rounding may be slightly higher when ties split a group further.
+    function calcPayoutRemainder(nightId: string): number {
+      const divMap = nightDivAgg.get(nightId)
+      if (!divMap) return 0
+      let total = 0
+      for (const { paidCount, grossCollected } of divMap.values()) {
+        const pool = Math.max(0, grossCollected - paidCount * housePerEntry - paidCount * eoyPerEntry)
+        const pcts = getPayoutPercentages(paidCount)
+        const theoretical = pcts.reduce((sum, pct) => sum + Math.floor(pool * pct), 0)
+        total += pool - theoretical
+      }
+      return total
+    }
+
+    // Roll up per-night totals
+    const nightAgg = new Map<string, { paidCount: number; grossCollected: number }>()
+    for (const [nightId, divMap] of nightDivAgg.entries()) {
+      let paidCount = 0, grossCollected = 0
+      for (const d of divMap.values()) { paidCount += d.paidCount; grossCollected += d.grossCollected }
+      nightAgg.set(nightId, { paidCount, grossCollected })
     }
 
     const nightResults = nights.map(n => {
-      const agg          = nightAgg.get(n.id) ?? { paidCount: 0, grossCollected: 0 }
-      const houseTotal   = agg.paidCount * housePerEntry
-      const eoyTotal     = agg.paidCount * eoyPerEntry
-      const payoutPool   = Math.max(0, agg.grossCollected - houseTotal - eoyTotal)
-      return { nightId: n.id, date: n.date, status: n.status, paidCount: agg.paidCount, grossCollected: agg.grossCollected, houseTotal, eoyTotal, payoutPool }
+      const agg            = nightAgg.get(n.id) ?? { paidCount: 0, grossCollected: 0 }
+      const houseTotal     = agg.paidCount * housePerEntry
+      const eoyTotal       = agg.paidCount * eoyPerEntry
+      const payoutPool     = Math.max(0, agg.grossCollected - houseTotal - eoyTotal)
+      const payoutRemainder = calcPayoutRemainder(n.id)
+      return { nightId: n.id, date: n.date, status: n.status, paidCount: agg.paidCount, grossCollected: agg.grossCollected, houseTotal, eoyTotal, payoutPool, payoutRemainder }
     })
 
     const totals = nightResults.reduce(
       (acc, n) => ({
-        paidCount:      acc.paidCount      + n.paidCount,
-        grossCollected: acc.grossCollected + n.grossCollected,
-        houseTotal:     acc.houseTotal     + n.houseTotal,
-        eoyTotal:       acc.eoyTotal       + n.eoyTotal,
-        payoutPool:     acc.payoutPool     + n.payoutPool,
+        paidCount:        acc.paidCount        + n.paidCount,
+        grossCollected:   acc.grossCollected   + n.grossCollected,
+        houseTotal:       acc.houseTotal       + n.houseTotal,
+        eoyTotal:         acc.eoyTotal         + n.eoyTotal,
+        payoutPool:       acc.payoutPool       + n.payoutPool,
+        payoutRemainder:  acc.payoutRemainder  + n.payoutRemainder,
       }),
-      { paidCount: 0, grossCollected: 0, houseTotal: 0, eoyTotal: 0, payoutPool: 0 },
+      { paidCount: 0, grossCollected: 0, houseTotal: 0, eoyTotal: 0, payoutPool: 0, payoutRemainder: 0 },
     )
 
     return reply.send({ season, nights: nightResults, totals, settings })

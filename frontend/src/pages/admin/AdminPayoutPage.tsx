@@ -85,6 +85,7 @@ export default function AdminPayoutPage() {
   const totalHouse        = divisions.reduce((sum, d) => sum + d.houseTotal, 0)
   const totalEoy          = divisions.reduce((sum, d) => sum + d.eoyTotal, 0)
   const totalPool         = divisions.reduce((sum, d) => sum + d.pool, 0)
+  const totalRemainder    = divisions.reduce((sum, d) => sum + (d.pool - d.payouts.reduce((s, p) => s + p.payout, 0)), 0)
 
   return (
     <div className="space-y-6">
@@ -121,6 +122,9 @@ export default function AdminPayoutPage() {
             <div>
               <p className="text-xs text-blue-600 dark:text-blue-400 font-medium uppercase tracking-wide">End of Year</p>
               <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">${totalEoy}</p>
+              {totalRemainder > 0 && (
+                <p className="text-xs text-blue-400 mt-0.5">+${totalRemainder} rounding</p>
+              )}
             </div>
             <div>
               <p className="text-xs text-green-700 dark:text-green-400 font-medium uppercase tracking-wide">Players Paid</p>
@@ -140,7 +144,9 @@ export default function AdminPayoutPage() {
           No check-ins yet. Check in players and mark them as paid to see payouts.
         </div>
       ) : (
-        divisions.map(div => (
+        divisions.map(div => {
+          const payoutRemainder = div.pool - div.payouts.reduce((sum, p) => sum + p.payout, 0)
+          return (
           <div key={div.divisionId} className="card">
             {/* Division header */}
             <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
@@ -154,7 +160,16 @@ export default function AdminPayoutPage() {
                 </p>
                 {div.paidCount > 0 && (
                   <p className="text-xs text-gray-400 mt-0.5">
-                    ${div.grossCollected} gross &rarr; <span className="text-gray-500">${div.houseTotal} house</span> · <span className="text-blue-500">${div.eoyTotal} EOY</span> · <span className="text-green-600">${div.pool} payout</span>
+                    ${div.grossCollected} gross &rarr; <span className="text-gray-500">${div.houseTotal} house</span>
+                    {' · '}
+                    <span className="text-blue-500">
+                      ${div.eoyTotal} EOY
+                      {payoutRemainder > 0 && (
+                        <span className="text-blue-400"> (+${payoutRemainder} rounding)</span>
+                      )}
+                    </span>
+                    {' · '}
+                    <span className="text-green-600">${div.pool} payout</span>
                   </p>
                 )}
               </div>
@@ -207,7 +222,7 @@ export default function AdminPayoutPage() {
               </div>
             )}
           </div>
-        ))
+        )})
       )}
 
       {/* Footer note */}

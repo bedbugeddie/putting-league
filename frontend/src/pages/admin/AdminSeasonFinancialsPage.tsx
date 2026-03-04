@@ -31,7 +31,16 @@ function NightRow({ night }: { night: NightFinancials }) {
       <td className="py-2.5 pr-3 text-right tabular-nums text-sm text-gray-600">{hasData ? night.paidCount : '—'}</td>
       <td className="py-2.5 pr-3 text-right tabular-nums text-sm font-medium text-green-700 dark:text-green-400">{hasData ? fmt(night.grossCollected) : '—'}</td>
       <td className="py-2.5 pr-3 text-right tabular-nums text-sm text-gray-500">{hasData ? fmt(night.houseTotal) : '—'}</td>
-      <td className="py-2.5 pr-3 text-right tabular-nums text-sm text-blue-600 dark:text-blue-400">{hasData ? fmt(night.eoyTotal) : '—'}</td>
+      <td className="py-2.5 pr-3 text-right tabular-nums text-sm text-blue-600 dark:text-blue-400">
+        {hasData ? (
+          <>
+            {fmt(night.eoyTotal)}
+            {night.payoutRemainder > 0 && (
+              <span className="ml-1 text-blue-400 text-xs">(+{fmt(night.payoutRemainder)})</span>
+            )}
+          </>
+        ) : '—'}
+      </td>
       <td className="py-2.5 pr-4 text-right tabular-nums text-sm font-bold text-green-700 dark:text-green-400">{hasData ? fmt(night.payoutPool) : '—'}</td>
     </tr>
   )
@@ -40,7 +49,7 @@ function NightRow({ night }: { night: NightFinancials }) {
 // ── Export helpers ────────────────────────────────────────────────────────────
 
 function downloadCsv(nights: NightFinancials[], seasonName: string) {
-  const header = ['Date', 'Status', 'Paid Players', 'Gross Collected', 'House', 'EOY', 'Payout Pool']
+  const header = ['Date', 'Status', 'Paid Players', 'Gross Collected', 'House', 'EOY', 'EOY Rounding', 'Payout Pool']
   const rows = nights.map(n => [
     format(new Date(n.date), 'MMM d, yyyy'),
     n.status.replace('_', ' '),
@@ -48,6 +57,7 @@ function downloadCsv(nights: NightFinancials[], seasonName: string) {
     n.paidCount > 0 ? n.grossCollected : '',
     n.paidCount > 0 ? n.houseTotal : '',
     n.paidCount > 0 ? n.eoyTotal : '',
+    n.paidCount > 0 && n.payoutRemainder > 0 ? n.payoutRemainder : '',
     n.paidCount > 0 ? n.payoutPool : '',
   ])
 
@@ -77,6 +87,7 @@ function openPrintReport(
 
   const nightRows = nights.map(n => {
     const has = n.paidCount > 0
+    const rem = has && n.payoutRemainder > 0 ? `<span class="rounding">+${fmtN(n.payoutRemainder)}</span>` : ''
     return `
       <tr>
         <td>${fmtD(n.date)}</td>
@@ -84,7 +95,7 @@ function openPrintReport(
         <td class="num">${has ? n.paidCount : '—'}</td>
         <td class="num">${has ? fmtN(n.grossCollected) : '—'}</td>
         <td class="num">${has ? fmtN(n.houseTotal) : '—'}</td>
-        <td class="num eoy">${has ? fmtN(n.eoyTotal) : '—'}</td>
+        <td class="num eoy">${has ? fmtN(n.eoyTotal) : '—'}${rem}</td>
         <td class="num payout">${has ? fmtN(n.payoutPool) : '—'}</td>
       </tr>`
   }).join('')
@@ -118,6 +129,7 @@ function openPrintReport(
     td { padding: 7px 10px; border-bottom: 1px solid #f3f4f6; font-size: 12px; }
     td.eoy    { color: #1d4ed8; }
     td.payout { color: #15803d; font-weight: 600; }
+    .rounding { font-size: 10px; color: #93c5fd; margin-left: 4px; }
     tfoot td { font-weight: 700; border-top: 2px solid #d1d5db; background: #f9fafb; padding: 9px 10px; }
     tfoot td.eoy    { color: #1d4ed8; }
     tfoot td.payout { color: #15803d; }
@@ -149,6 +161,7 @@ function openPrintReport(
     <div class="summary-card eoy">
       <div class="label">End of Year Pool</div>
       <div class="value">${fmtN(totals.eoyTotal)}</div>
+      ${totals.payoutRemainder > 0 ? `<div style="font-size:10px;color:#93c5fd;margin-top:2px">+${fmtN(totals.payoutRemainder)} rounding</div>` : ''}
     </div>
     <div class="summary-card paid">
       <div class="label">Total Paid Out</div>
@@ -175,7 +188,7 @@ function openPrintReport(
         <td class="num">${totals.paidCount}</td>
         <td class="num">${fmtN(totals.grossCollected)}</td>
         <td class="num">${fmtN(totals.houseTotal)}</td>
-        <td class="num eoy">${fmtN(totals.eoyTotal)}</td>
+        <td class="num eoy">${fmtN(totals.eoyTotal)}${totals.payoutRemainder > 0 ? ` <span class="rounding">(+${fmtN(totals.payoutRemainder)})</span>` : ''}</td>
         <td class="num payout">${fmtN(totals.payoutPool)}</td>
       </tr>
     </tfoot>
@@ -266,6 +279,9 @@ export default function AdminSeasonFinancialsPage() {
           <div className="card text-center">
             <p className="text-xs text-blue-600 dark:text-blue-400 uppercase tracking-wide font-medium">End of Year</p>
             <p className="text-2xl font-bold text-blue-700 dark:text-blue-400 mt-1">{fmt(totals.eoyTotal)}</p>
+            {totals.payoutRemainder > 0 && (
+              <p className="text-xs text-blue-400 mt-0.5">+{fmt(totals.payoutRemainder)} rounding</p>
+            )}
           </div>
           <div className="card text-center">
             <p className="text-xs text-green-700 dark:text-green-400 uppercase tracking-wide font-medium">Total Paid Out</p>
@@ -305,7 +321,12 @@ export default function AdminSeasonFinancialsPage() {
                   <td className="py-3 pr-3 text-right tabular-nums text-sm">{totals.paidCount}</td>
                   <td className="py-3 pr-3 text-right tabular-nums text-sm text-green-700 dark:text-green-400">{fmt(totals.grossCollected)}</td>
                   <td className="py-3 pr-3 text-right tabular-nums text-sm text-gray-600 dark:text-gray-400">{fmt(totals.houseTotal)}</td>
-                  <td className="py-3 pr-3 text-right tabular-nums text-sm text-blue-600 dark:text-blue-400">{fmt(totals.eoyTotal)}</td>
+                  <td className="py-3 pr-3 text-right tabular-nums text-sm text-blue-600 dark:text-blue-400">
+                    {fmt(totals.eoyTotal)}
+                    {totals.payoutRemainder > 0 && (
+                      <span className="ml-1 text-blue-400 text-xs">(+{fmt(totals.payoutRemainder)})</span>
+                    )}
+                  </td>
                   <td className="py-3 pr-4 text-right tabular-nums text-sm text-green-700 dark:text-green-400">{fmt(totals.payoutPool)}</td>
                 </tr>
               </tfoot>

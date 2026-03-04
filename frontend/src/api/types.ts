@@ -201,6 +201,7 @@ export interface NightFinancials {
   houseTotal: number
   eoyTotal: number
   payoutPool: number
+  payoutRemainder: number
 }
 
 export interface SeasonFinancialsTotals {
@@ -209,6 +210,7 @@ export interface SeasonFinancialsTotals {
   houseTotal: number
   eoyTotal: number
   payoutPool: number
+  payoutRemainder: number
 }
 
 export interface SeasonFinancialsResponse {
