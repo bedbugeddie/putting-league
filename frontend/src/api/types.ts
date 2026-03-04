@@ -17,6 +17,7 @@ export interface User {
   lastName?: string | null
   suffix?: string | null
   phone?: string | null
+  hasAcknowledgedInfo?: boolean
   isAdmin: boolean
   avatarDataUrl?: string | null
   player?: Player

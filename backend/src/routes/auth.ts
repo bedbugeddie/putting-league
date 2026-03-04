@@ -258,6 +258,15 @@ export async function authRoutes(app: FastifyInstance) {
     return reply.send(await buildAuthResponse(app, req.user!.userId))
   })
 
+  // POST /auth/acknowledge-info – mark that the user has read the league info
+  app.post('/auth/acknowledge-info', { preHandler: requireAuth }, async (req, reply) => {
+    await prisma.user.update({
+      where: { id: req.user!.userId },
+      data: { hasAcknowledgedInfo: true },
+    })
+    return reply.send(await buildAuthResponse(app, req.user!.userId))
+  })
+
   // GET /auth/me – return current user
   app.get('/auth/me', { preHandler: requireAuth }, async (req, reply) => {
     const user = await prisma.user.findUnique({

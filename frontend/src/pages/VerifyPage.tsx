@@ -28,7 +28,9 @@ export default function VerifyPage() {
         authStore.setAuth(jwt, user)
         const dest = user.isAdmin
           ? '/admin'
-          : (!user.player?.divisionId ? '/choose-division' : '/')
+          : (!user.hasAcknowledgedInfo
+              ? '/info'
+              : (!user.player?.divisionId ? '/choose-division' : '/'))
         if (!user.hasPassword) {
           setRedirectTo(dest)
           setShowPasswordPrompt(true)

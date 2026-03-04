@@ -1,4 +1,8 @@
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
+import { useAuth, authStore } from '../store/auth'
+import { api } from '../api/client'
 
 const INFO_MD = `
 ## 📅 When
@@ -74,6 +78,29 @@ Email [MVputtingleague@gmail.com](mailto:MVputtingleague@gmail.com) — add this
 `.trim()
 
 export default function LeagueInfoPage() {
+  const { user, isAuthenticated } = useAuth()
+  const navigate = useNavigate()
+  const [checked, setChecked] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  const needsAck = isAuthenticated && !user?.hasAcknowledgedInfo
+
+  async function handleAcknowledge() {
+    if (!checked || saving) return
+    setSaving(true)
+    try {
+      const { token, user: fresh } = await api.post<{ token: string; user: any }>(
+        '/auth/acknowledge-info', {}
+      )
+      authStore.setAuth(token, fresh)
+      // Navigate to the normal post-login destination
+      const dest = fresh.player?.divisionId ? '/' : '/choose-division'
+      navigate(dest, { replace: true })
+    } catch {
+      setSaving(false)
+    }
+  }
+
   return (
     <div className="max-w-3xl mx-auto">
       <div className="mb-6">
@@ -99,6 +126,36 @@ export default function LeagueInfoPage() {
           <ReactMarkdown>{INFO_MD}</ReactMarkdown>
         </div>
       </div>
+
+      {needsAck && (
+        <div className="mt-6 bg-brand-50 dark:bg-forest-surface border border-brand-200 dark:border-forest-border rounded-2xl p-6">
+          <h2 className="text-base font-bold text-gray-900 dark:text-white mb-1">
+            Before you continue…
+          </h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            Please read the league information above, then check the box below to confirm
+            you understand the rules and requirements.
+          </p>
+          <label className="flex items-start gap-3 cursor-pointer select-none mb-5">
+            <input
+              type="checkbox"
+              checked={checked}
+              onChange={e => setChecked(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+            />
+            <span className="text-sm text-gray-700 dark:text-gray-200">
+              I have read and understand the league rules, fees, and bar support requirement.
+            </span>
+          </label>
+          <button
+            onClick={handleAcknowledge}
+            disabled={!checked || saving}
+            className="btn-primary disabled:opacity-50"
+          >
+            {saving ? 'Saving…' : 'Continue to League →'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
