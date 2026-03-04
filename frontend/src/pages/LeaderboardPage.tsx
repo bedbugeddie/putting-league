@@ -44,10 +44,12 @@ function LeaderboardTable({
   players,
   title,
   payoutMap,
+  showDivision = false,
 }: {
   players: PlayerTotals[]
   title: string
   payoutMap: Map<string, PayoutInfo>
+  showDivision?: boolean
 }) {
   const { sortKey, sortDir, toggleSort } = useSortable('score', 'desc')
 
@@ -64,18 +66,20 @@ function LeaderboardTable({
     const dir = sortDir === 'asc' ? 1 : -1
     return [...players].sort((a, b) => {
       switch (sortKey) {
-        case 'player': return dir * a.playerName.localeCompare(b.playerName)
-        case 'made':   return dir * (a.totalMade - b.totalMade)
-        case 'bonus':  return dir * (a.totalBonus - b.totalBonus)
-        case 'score':  return dir * (a.totalScore - b.totalScore)
-        case 'short':  return dir * (a.shortMade - b.shortMade)
-        case 'long':   return dir * (a.longMade - b.longMade)
-        default:       return b.totalScore - a.totalScore
+        case 'player':   return dir * a.playerName.localeCompare(b.playerName)
+        case 'division': return dir * (a.divisionCode ?? '').localeCompare(b.divisionCode ?? '')
+        case 'made':     return dir * (a.totalMade - b.totalMade)
+        case 'bonus':    return dir * (a.totalBonus - b.totalBonus)
+        case 'score':    return dir * (a.totalScore - b.totalScore)
+        case 'short':    return dir * (a.shortMade - b.shortMade)
+        case 'long':     return dir * (a.longMade - b.longMade)
+        default:         return b.totalScore - a.totalScore
       }
     })
   }, [players, sortKey, sortDir])
 
   const hasPayouts = payoutMap.size > 0
+  const colCount = 7 + (showDivision ? 1 : 0) + (hasPayouts ? 1 : 0)
 
   return (
     <div className="card p-0 overflow-hidden">
@@ -85,6 +89,9 @@ function LeaderboardTable({
           <tr className="border-b border-gray-200 text-gray-500 bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:bg-gray-700/50">
             <th className="text-left py-2.5 px-4 w-10">#</th>
             <SortableHeader sortKey="player" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} className="text-left py-2.5 pr-3">Player</SortableHeader>
+            {showDivision && (
+              <SortableHeader sortKey="division" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} className="text-left py-2.5 pr-3">Div</SortableHeader>
+            )}
             <SortableHeader sortKey="made"   currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} className="text-right py-2.5 pr-3 hidden sm:table-cell">Made</SortableHeader>
             <SortableHeader sortKey="bonus"  currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} className="text-right py-2.5 pr-3 hidden sm:table-cell">Bonus</SortableHeader>
             <SortableHeader sortKey="score"  currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} className="text-right py-2.5 pr-4 font-bold">Score</SortableHeader>
@@ -120,6 +127,14 @@ function LeaderboardTable({
                     <span className="text-xs text-yellow-600 sm:hidden">+{p.totalBonus} ★</span>
                   )}
                 </td>
+                {showDivision && (
+                  <td className="py-3 pr-3">
+                    {p.divisionCode
+                      ? <span className="text-xs font-mono font-semibold text-brand-700 dark:text-brand-100 bg-brand-50 dark:bg-brand-800 border border-brand-200 dark:border-brand-600 rounded px-1.5 py-0.5">{p.divisionCode}</span>
+                      : <span className="text-gray-300">—</span>
+                    }
+                  </td>
+                )}
                 <td className="py-3 pr-3 text-right text-gray-600 hidden sm:table-cell">{p.totalMade}</td>
                 <td className="py-3 pr-3 text-right text-yellow-600 hidden sm:table-cell">
                   {p.totalBonus > 0 ? `+${p.totalBonus}` : '—'}
@@ -136,7 +151,7 @@ function LeaderboardTable({
             )
           })}
           {players.length === 0 && (
-            <tr><td colSpan={hasPayouts ? 8 : 7} className="py-8 text-center text-gray-400">No scores yet</td></tr>
+            <tr><td colSpan={colCount} className="py-8 text-center text-gray-400">No scores yet</td></tr>
           )}
         </tbody>
       </table>
@@ -235,7 +250,7 @@ export default function LeaderboardPage() {
       </div>
 
       {tab === 'overall'
-        ? <LeaderboardTable players={overall} title="Overall" payoutMap={payoutMap} />
+        ? <LeaderboardTable players={overall} title="Overall" payoutMap={payoutMap} showDivision />
         : <LeaderboardTable
             players={byDivision[tab] ?? []}
             title={`Division ${tab}`}
