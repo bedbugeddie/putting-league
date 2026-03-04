@@ -79,7 +79,7 @@ function openPrintReport(
   seasonName: string,
   housePerEntry: number,
   eoyPerEntry: number,
-  totals: { paidCount: number; grossCollected: number; houseTotal: number; eoyTotal: number; payoutPool: number },
+  totals: { paidCount: number; grossCollected: number; houseTotal: number; eoyTotal: number; payoutPool: number; payoutRemainder: number },
 ) {
   const fmtD = (d: string) => format(new Date(d), 'MMM d, yyyy')
   const fmtN = (n: number) => `$${n.toLocaleString()}`
