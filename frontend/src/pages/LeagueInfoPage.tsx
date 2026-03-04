@@ -107,9 +107,6 @@ export default function LeagueInfoPage() {
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
           League Information
         </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Everything you need to know about the Merrimack Valley Putting League
-        </p>
       </div>
 
       <div className="bg-white dark:bg-forest-surface rounded-2xl border border-gray-200 dark:border-forest-border p-6 sm:p-8">
