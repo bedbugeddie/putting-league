@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../../api/client'
-import type { LeagueNight } from '../../api/types'
+import type { LeagueNight, SeasonFinancialsResponse } from '../../api/types'
 import StatusBadge from '../../components/ui/StatusBadge'
 import { format } from 'date-fns'
 
@@ -10,6 +10,11 @@ export default function AdminDashboard() {
   const { data: nightsData } = useQuery<{ leagueNights: LeagueNight[] }>({
     queryKey: ['league-nights'],
     queryFn: () => api.get('/league-nights'),
+  })
+
+  const { data: financialsData } = useQuery<SeasonFinancialsResponse>({
+    queryKey: ['season-financials'],
+    queryFn: () => api.get('/admin/seasons/active/financials'),
   })
 
   const allNights = nightsData?.leagueNights ?? []
@@ -22,6 +27,12 @@ export default function AdminDashboard() {
     .filter(n => n.status === 'COMPLETED')
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 5)
+
+  const nightFinancialsMap = new Map(
+    (financialsData?.nights ?? []).map(nf => [nf.nightId, nf])
+  )
+
+  const fmt = (n: number) => `$${n}`
 
   return (
     <div className="space-y-6">
@@ -83,12 +94,27 @@ export default function AdminDashboard() {
             <Link to="/admin/league-nights" className="text-sm text-brand-600 hover:underline">View all →</Link>
           </div>
           <div className="space-y-2">
-            {pastNights.map(n => (
-              <Link key={n.id} to={`/admin/league-nights/${n.id}`} className="flex items-center justify-between p-2 rounded hover:bg-gray-50">
-                <span className="text-sm font-medium">{format(new Date(n.date), 'MMM d, yyyy')}</span>
-                <StatusBadge status={n.status} />
-              </Link>
-            ))}
+            {pastNights.map(n => {
+              const fin = nightFinancialsMap.get(n.id)
+              return (
+                <Link key={n.id} to={`/admin/league-nights/${n.id}`} className="flex items-center justify-between p-2 rounded hover:bg-gray-50 gap-2">
+                  <div>
+                    <p className="text-sm font-medium">{format(new Date(n.date), 'MMM d, yyyy')}</p>
+                    {fin && (
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {fin.paidCount} players &middot;{' '}
+                        <span className="text-gray-500">House {fmt(fin.houseTotal)}</span>
+                        {' · '}
+                        <span className="text-blue-600">EOY {fmt(fin.eoyTotal)}</span>
+                        {' · '}
+                        <span className="text-green-700">Payout {fmt(fin.payoutPool)}</span>
+                      </p>
+                    )}
+                  </div>
+                  <StatusBadge status={n.status} />
+                </Link>
+              )
+            })}
             {pastNights.length === 0 && <p className="text-gray-400 text-sm">No completed league nights.</p>}
           </div>
         </div>
