@@ -6,7 +6,10 @@ import { useAuth } from '../store/auth'
 import type { LeagueNight, Card, Player, Score, Position, Hole, Round, NightHighlights } from '../api/types'
 import ScoreInput from '../components/ui/ScoreInput'
 import Spinner from '../components/ui/Spinner'
+import SortableHeader from '../components/ui/SortableHeader'
+import { useSortable } from '../hooks/useSortable'
 import toast from 'react-hot-toast'
+import clsx from 'clsx'
 
 type ScoreKey = `${string}::${string}::${string}::${Position}` // playerId::holeId::roundId::position
 
@@ -34,20 +37,30 @@ function RoundSummary({
     return localOverrides.get(key) ?? scoreMap.get(key)?.made ?? 0
   }
 
-  const rows = players
-    .map(player => {
-      let total = 0
-      let bonuses = 0
-      const holeScores = holes.map(hole => {
-        const s = getVal(player.id, hole.id, round.id, 'SHORT')
-        const l = getVal(player.id, hole.id, round.id, 'LONG')
-        bonuses += (s === 3 ? 1 : 0) + (l === 3 ? 1 : 0)
-        total += s + l
-        return { short: s, long: l }
-      })
-      return { player, total: total + bonuses, bonuses, holeScores }
+  const { sortKey, sortDir, toggleSort } = useSortable('score', 'desc')
+
+  const rawRows = players.map(player => {
+    let total = 0
+    let bonuses = 0
+    const holeScores = holes.map(hole => {
+      const s = getVal(player.id, hole.id, round.id, 'SHORT')
+      const l = getVal(player.id, hole.id, round.id, 'LONG')
+      bonuses += (s === 3 ? 1 : 0) + (l === 3 ? 1 : 0)
+      total += s + l
+      return { short: s, long: l }
     })
-    .sort((a, b) => b.total - a.total)
+    return { player, total: total + bonuses, bonuses, holeScores }
+  })
+
+  const scoreRankMap = new Map(
+    [...rawRows].sort((a, b) => b.total - a.total).map((r, i) => [r.player.id, i + 1])
+  )
+
+  const rows = [...rawRows].sort((a, b) => {
+    const dir = sortDir === 'asc' ? 1 : -1
+    if (sortKey === 'player') return dir * a.player.user.name.localeCompare(b.player.user.name)
+    return dir * (a.total - b.total)
+  })
 
   return (
     <div className="space-y-4 pb-6">
@@ -68,13 +81,13 @@ function RoundSummary({
               {/* Hole number spans two sub-columns each */}
               <tr className="bg-gray-50 dark:bg-gray-700/50">
                 <th className="text-left px-4 py-1.5 font-medium text-gray-500" rowSpan={2}>#</th>
-                <th className="text-left px-4 py-1.5 font-medium text-gray-500" rowSpan={2}>Player</th>
+                <SortableHeader sortKey="player" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} className="text-left px-4 py-1.5 font-medium text-gray-500" rowSpan={2}>Player</SortableHeader>
                 {holes.map(h => (
                   <th key={h.id} colSpan={2} className="px-2 py-1.5 font-medium text-gray-500 text-center border-l border-gray-200 dark:border-gray-600">
                     H{h.number}
                   </th>
                 ))}
-                <th className="px-4 py-1.5 font-medium text-gray-500 text-right" rowSpan={2}>Total</th>
+                <SortableHeader sortKey="score" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} className="px-4 py-1.5 font-medium text-gray-500 text-right" rowSpan={2}>Total</SortableHeader>
               </tr>
               <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
                 {holes.map(h => (
@@ -86,9 +99,9 @@ function RoundSummary({
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ player, total, bonuses, holeScores }, rank) => (
+              {rows.map(({ player, total, bonuses, holeScores }) => (
                 <tr key={player.id} className="border-b border-gray-100 dark:border-gray-700 last:border-0">
-                  <td className="px-4 py-3 text-gray-400 font-mono text-xs">{rank + 1}</td>
+                  <td className="px-4 py-3 text-gray-400 font-mono text-xs">{scoreRankMap.get(player.id) ?? 0}</td>
                   <td className="px-4 py-3">
                     <span className="font-medium">{player.user.name}</span>
                     {player.division?.code && (
@@ -149,7 +162,9 @@ function FinishView({
     return localOverrides.get(key) ?? scoreMap.get(key)?.made ?? 0
   }
 
-  const rows = players.map(player => {
+  const { sortKey: fSortKey, sortDir: fSortDir, toggleSort: fToggleSort } = useSortable('score', 'desc')
+
+  const rawRows = players.map(player => {
     let totalMade = 0
     let bonuses = 0
     for (const round of rounds) {
@@ -161,7 +176,17 @@ function FinishView({
       }
     }
     return { player, totalMade, bonuses, totalScore: totalMade + bonuses }
-  }).sort((a, b) => b.totalScore - a.totalScore)
+  })
+
+  const scoreRankMap = new Map(
+    [...rawRows].sort((a, b) => b.totalScore - a.totalScore).map((r, i) => [r.player.id, i + 1])
+  )
+
+  const rows = [...rawRows].sort((a, b) => {
+    const dir = fSortDir === 'asc' ? 1 : -1
+    if (fSortKey === 'player') return dir * a.player.user.name.localeCompare(b.player.user.name)
+    return dir * (a.totalScore - b.totalScore)
+  })
 
   const highlights = hlData
 
@@ -188,13 +213,27 @@ function FinishView({
 
       {/* Card final scores */}
       <div className="card p-0 overflow-hidden">
-        <div className="px-4 py-2.5 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
+        <div className="px-4 py-2.5 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 flex items-center justify-between">
           <h3 className="font-semibold text-sm">Final Scores — {cardName}</h3>
+          <div className="flex items-center gap-1 text-xs">
+            <button
+              onClick={() => fToggleSort('score')}
+              className={clsx('px-2 py-0.5 rounded cursor-pointer select-none', fSortKey === 'score' ? 'text-brand-600 dark:text-brand-400 font-semibold' : 'text-gray-400 hover:text-gray-600')}
+            >
+              Score {fSortKey === 'score' ? (fSortDir === 'asc' ? '▲' : '▼') : '⇅'}
+            </button>
+            <button
+              onClick={() => fToggleSort('player')}
+              className={clsx('px-2 py-0.5 rounded cursor-pointer select-none', fSortKey === 'player' ? 'text-brand-600 dark:text-brand-400 font-semibold' : 'text-gray-400 hover:text-gray-600')}
+            >
+              Name {fSortKey === 'player' ? (fSortDir === 'asc' ? '▲' : '▼') : '⇅'}
+            </button>
+          </div>
         </div>
         <div className="divide-y divide-gray-50 dark:divide-gray-700">
-          {rows.map(({ player, totalMade, bonuses, totalScore }, i) => (
+          {rows.map(({ player, totalMade, bonuses, totalScore }) => (
             <div key={player.id} className="flex items-center gap-3 px-4 py-3">
-              <span className="text-base font-bold text-gray-400 w-6 shrink-0 text-center">{i + 1}</span>
+              <span className="text-base font-bold text-gray-400 w-6 shrink-0 text-center">{scoreRankMap.get(player.id) ?? 0}</span>
               <div className="flex-1 min-w-0">
                 <span className="font-medium">{player.user.name}</span>
                 {player.division?.code && (
@@ -296,6 +335,7 @@ export default function ScoringPage({ adminMode = false }: { adminMode?: boolean
   const [showSummary, setShowSummary] = useState(false)
   const [showFinish, setShowFinish] = useState(false)
   const autoPositioned = useRef(false)
+  const { sortKey: gridSortKey, sortDir: gridSortDir, toggleSort: toggleGridSort } = useSortable('player', 'asc')
 
   const { data: nightData, isLoading: nightLoading } = useQuery<{ leagueNight: LeagueNight }>({
     queryKey: ['league-night', id],
@@ -398,6 +438,16 @@ export default function ScoringPage({ adminMode = false }: { adminMode?: boolean
         ).values()
       )
     : rotateLeft(basePlayers, holeIndex)
+
+  // Sorted view for admin all-cards mode only; otherwise preserve throw-order rotation
+  const displayPlayers: Player[] = (() => {
+    if (!isAdmin || activeCard) return players
+    const dir = gridSortDir === 'asc' ? 1 : -1
+    return [...players].sort((a, b) => {
+      if (gridSortKey === 'division') return dir * ((a.division?.code ?? '').localeCompare(b.division?.code ?? ''))
+      return dir * a.user.name.localeCompare(b.user.name)
+    })
+  })()
 
   // Base player order (un-rotated) for the summary — shows everyone in original throw order
   const summaryPlayers: Player[] = isAdmin && !activeCard
@@ -641,14 +691,27 @@ export default function ScoringPage({ adminMode = false }: { adminMode?: boolean
 
           {/* Column headers – desktop */}
           <div className="hidden sm:grid sm:grid-cols-[1fr_3rem_1fr_1fr] gap-2 px-4 py-1.5 text-xs text-gray-400 font-medium border-b border-gray-100 dark:border-gray-700 dark:text-gray-500">
-            <span>Player</span>
-            <span>Div</span>
+            {isAdmin && !activeCard ? (
+              <>
+                <button onClick={() => toggleGridSort('player')} className={clsx('text-left cursor-pointer select-none', gridSortKey === 'player' ? 'text-brand-500' : '')}>
+                  Player {gridSortKey === 'player' ? (gridSortDir === 'asc' ? '▲' : '▼') : '⇅'}
+                </button>
+                <button onClick={() => toggleGridSort('division')} className={clsx('text-left cursor-pointer select-none', gridSortKey === 'division' ? 'text-brand-500' : '')}>
+                  Div {gridSortKey === 'division' ? (gridSortDir === 'asc' ? '▲' : '▼') : '⇅'}
+                </button>
+              </>
+            ) : (
+              <>
+                <span>Player</span>
+                <span>Div</span>
+              </>
+            )}
             <span>Short (3 discs)</span>
             <span>Long (3 discs)</span>
           </div>
 
           <div className="divide-y divide-gray-50 dark:divide-gray-700">
-            {players.map((player, throwPos) => {
+            {displayPlayers.map((player, throwPos) => {
               const shortKey: ScoreKey = `${player.id}::${currentHole.id}::${currentRound.id}::SHORT`
               const longKey: ScoreKey  = `${player.id}::${currentHole.id}::${currentRound.id}::LONG`
               const shortVal = localOverrides.get(shortKey) ?? scoreMap.get(shortKey)?.made ?? null
