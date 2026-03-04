@@ -34,9 +34,14 @@ export default function Layout() {
   // True when a logged-in user hasn't yet acknowledged the league info
   const needsAck = isAuthenticated && !user?.hasAcknowledgedInfo
 
-  // Force unacknowledged users to stay on /info
+  // Force unacknowledged users to stay on /info.
+  // Read hasAcknowledgedInfo directly from the module-level store (_state) inside
+  // the effect so we always see the post-setAuth value, even when the React state
+  // hasn't propagated yet (avoids a race with navigate() in LeagueInfoPage).
   useEffect(() => {
-    if (needsAck && location.pathname !== '/info') {
+    const authed = !!authStore.getToken()
+    const acked  = authStore.getUser()?.hasAcknowledgedInfo
+    if (authed && !acked && location.pathname !== '/info') {
       navigate('/info', { replace: true })
     }
   }, [needsAck, location.pathname, navigate])

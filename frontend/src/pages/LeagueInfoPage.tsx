@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
+import toast from 'react-hot-toast'
 import { useAuth, authStore } from '../store/auth'
 import { api } from '../api/client'
 
@@ -96,7 +97,8 @@ export default function LeagueInfoPage() {
       // Navigate to the normal post-login destination
       const dest = fresh.player?.divisionId ? '/' : '/choose-division'
       navigate(dest, { replace: true })
-    } catch {
+    } catch (err: any) {
+      toast.error(err.message ?? 'Something went wrong. Please try again.')
       setSaving(false)
     }
   }
