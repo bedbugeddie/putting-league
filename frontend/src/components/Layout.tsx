@@ -11,7 +11,7 @@ import MotdModal from './MotdModal'
 import PhoneNagModal from './PhoneNagModal'
 
 const navLinks: { to: string; label: string; end?: boolean }[] = [
-  { to: '/stats', label: 'Stats' },
+  { to: '/stats', label: 'League Stats' },
 ]
 
 const THEME_OPTIONS: { mode: ThemeMode; icon: string; label: string }[] = [
@@ -130,7 +130,7 @@ export default function Layout() {
                   )}
                   <NavLink to="/dashboard"
                     className={({ isActive }) => isActive ? 'font-semibold underline' : 'hover:underline'}>
-                    Dashboard
+                    My Stats
                   </NavLink>
 
                   {/* Avatar → user dropdown */}
@@ -276,7 +276,7 @@ export default function Layout() {
               </NavLink>
             )}
             <NavLink to="/dashboard" onClick={close} className={mobileNavItem}>
-              Dashboard
+              My Stats
             </NavLink>
             <NavLink to="/profile" onClick={close} className={mobileNavItem}>
               My Profile
