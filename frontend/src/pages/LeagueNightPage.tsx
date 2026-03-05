@@ -52,13 +52,6 @@ export default function LeagueNightPage() {
     refetchInterval: 5000,
   })
 
-  const { data: payoutsData } = useQuery<{ payouts: Record<string, { payout: number; place: number; pool: number; isTied: boolean; pendingPuttOff: boolean }> }>({
-    queryKey: ['night-payouts', id],
-    queryFn: () => api.get(`/league-nights/${id}/payouts`),
-    enabled: !!id,
-    refetchInterval: 15_000,
-  })
-
   const volunteerMut = useMutation({
     mutationFn: (cardId: string) => api.post(`/cards/${cardId}/volunteer`, {}),
     onSuccess: () => {
@@ -108,30 +101,20 @@ export default function LeagueNightPage() {
   const isTonight = isSameDay(new Date(night.date), new Date())
 
   // Group checked-in players by division for the "This Week's Players" section
-  const divisionOrder: string[] = []
   const byDivision = new Map<string, { label: string; checkIns: CheckIn[] }>()
   checkIns.forEach(c => {
     const div = c.player.division
     const key = div?.code ?? '__none__'
     const label = div ? `${div.name} (${div.code})` : 'No Division'
-    if (!byDivision.has(key)) {
-      byDivision.set(key, { label, checkIns: [] })
-      divisionOrder.push(key)
-    }
+    if (!byDivision.has(key)) byDivision.set(key, { label, checkIns: [] })
     byDivision.get(key)!.checkIns.push(c)
   })
-
-  // Build per-division prize pool map from payouts data (cross-referenced with checkIns)
-  const payouts = payoutsData?.payouts ?? {}
-  const divPools = new Map<string, { code: string; name: string; pool: number }>()
-  Object.entries(payouts).forEach(([playerId, info]) => {
-    const checkIn = checkIns.find(c => c.playerId === playerId)
-    const div = checkIn?.player.division
-    if (div && !divPools.has(div.code)) {
-      divPools.set(div.code, { code: div.code, name: div.name, pool: info.pool })
-    }
+  // Sort divisions alphabetically (no-division group last)
+  const divisionOrder = [...byDivision.keys()].sort((a, b) => {
+    if (a === '__none__') return 1
+    if (b === '__none__') return -1
+    return a.localeCompare(b)
   })
-  const totalPool = [...divPools.values()].reduce((sum, d) => sum + d.pool, 0)
 
   return (
     <div className="space-y-6">
@@ -303,43 +286,11 @@ export default function LeagueNightPage() {
         )}
       </div>
 
-      {/* Stats: Checked In + Potential Payouts */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Checked In tile */}
-        <div className="card text-center">
-          <p className="text-3xl font-bold text-brand-700">{checkIns.length}</p>
-          <p className="text-sm text-gray-500 mt-1">Checked In</p>
-        </div>
-
-        {/* Prize Pools tile */}
-        <div className="card">
-          <p className="text-sm font-semibold text-gray-500 mb-2 text-center">💰 Prize Pools</p>
-          {divPools.size > 0 ? (
-            <div className="space-y-1">
-              {[...divPools.values()].map(d => (
-                <div key={d.code} className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600 dark:text-gray-400">{d.name}</span>
-                  <span className="font-semibold text-brand-700 dark:text-brand-400">${d.pool}</span>
-                </div>
-              ))}
-              {divPools.size > 1 && (
-                <div className="flex items-center justify-between text-sm font-bold border-t border-gray-200 dark:border-gray-700 pt-1 mt-1">
-                  <span>Total</span>
-                  <span className="text-brand-700 dark:text-brand-400">${totalPool}</span>
-                </div>
-              )}
-            </div>
-          ) : (
-            <p className="text-sm text-gray-400 text-center py-1">Calculated after check-in</p>
-          )}
-        </div>
-      </div>
-
       {/* Who's checked in — grouped by division */}
       {checkIns.length > 0 && (
         <div className="card">
           <h2 className="text-lg font-semibold mb-4">This Week's Players ({checkIns.length})</h2>
-          <div className="space-y-4">
+          <div className="space-y-5">
             {divisionOrder.map(key => {
               const group = byDivision.get(key)!
               return (
@@ -347,20 +298,44 @@ export default function LeagueNightPage() {
                   <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-2">
                     {group.label}
                   </p>
-                  <div className="flex flex-wrap gap-2">
-                    {group.checkIns.map(c => (
-                      <span
-                        key={c.id}
-                        className={clsx(
-                          'px-3 py-1 rounded-full text-sm font-medium',
-                          c.playerId === myPlayerId
-                            ? 'bg-brand-100 text-brand-800 dark:bg-forest-mid dark:text-brand-100'
-                            : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-                        )}
-                      >
-                        {c.player.user.name}
-                      </span>
-                    ))}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-200 dark:border-gray-700">
+                          <th className="text-left pb-2 font-medium text-gray-500 text-xs">Player</th>
+                          <th className="text-right pb-2 font-medium text-gray-500 text-xs">Avg</th>
+                          <th className="text-right pb-2 font-medium text-gray-500 text-xs">Last</th>
+                          <th className="text-right pb-2 font-medium text-gray-500 text-xs">Events</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {group.checkIns.map(c => (
+                          <tr
+                            key={c.id}
+                            className={clsx(
+                              'border-b border-gray-100 dark:border-gray-800 last:border-0',
+                              c.playerId === myPlayerId && 'bg-brand-50/50 dark:bg-forest-mid/30'
+                            )}
+                          >
+                            <td className="py-2 font-medium">
+                              {c.player.user.name}
+                              {c.playerId === myPlayerId && (
+                                <span className="ml-1.5 text-xs text-brand-600 dark:text-brand-400">(you)</span>
+                              )}
+                            </td>
+                            <td className="py-2 text-right text-gray-600 dark:text-gray-400">
+                              {c.stats?.avgNightScore != null ? c.stats.avgNightScore : '—'}
+                            </td>
+                            <td className="py-2 text-right text-gray-600 dark:text-gray-400">
+                              {c.stats?.prevNightScore != null ? c.stats.prevNightScore : '—'}
+                            </td>
+                            <td className="py-2 text-right text-gray-500">
+                              {c.stats?.totalCheckIns ?? '—'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               )

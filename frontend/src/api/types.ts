@@ -157,6 +157,11 @@ export interface CheckIn {
   checkedInAt: string
   hasPaid: boolean
   player: Player
+  stats?: {
+    avgNightScore: number | null
+    prevNightScore: number | null
+    totalCheckIns: number
+  }
 }
 
 export interface PayoutEntry {

@@ -202,28 +202,16 @@ export default function StatsPage() {
         {/* Highest Single Night */}
         <div className="card">
           <h2 className="text-lg font-semibold mb-3">⚡ Highest Single Night</h2>
-          {highestByDivision.length === 0 ? (
+          {!records?.topNightScores?.[0] ? (
             <p className="text-gray-400">No data yet</p>
-          ) : highestByDivision.length === 1 ? (
-            /* Single division selected — big number display */
+          ) : (
             <>
-              <p className="text-5xl font-bold text-brand-700">{highestByDivision[0].score}</p>
-              <p className="text-sm text-gray-500 mt-1">
-                points in one league night · {highestByDivision[0].divisionCode}
+              <p className="text-5xl font-bold text-brand-700">{records.topNightScores[0].score}</p>
+              <p className="text-base font-medium mt-2">{records.topNightScores[0].playerName}</p>
+              <p className="text-sm text-gray-500">
+                {records.topNightScores[0].divisionCode} · {format(new Date(records.topNightScores[0].date), 'MMM d, yyyy')}
               </p>
             </>
-          ) : (
-            /* All divisions — per-division list */
-            <ul className="space-y-2">
-              {highestByDivision.map(d => (
-                <li key={d.divisionCode} className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    {d.divisionCode}
-                  </span>
-                  <span className="text-2xl font-bold text-brand-700">{d.score}</span>
-                </li>
-              ))}
-            </ul>
           )}
         </div>
 

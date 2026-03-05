@@ -26,7 +26,69 @@ export async function checkInRoutes(app: FastifyInstance) {
       },
       orderBy: { player: { user: { name: 'asc' } } },
     })
-    return reply.send({ checkIns })
+
+    if (!checkIns.length) return reply.send({ checkIns })
+
+    const playerIds = checkIns.map(c => c.playerId)
+
+    // Total check-in count per player (all-time)
+    const checkInCounts = await prisma.checkIn.groupBy({
+      by: ['playerId'],
+      where: { playerId: { in: playerIds } },
+      _count: { id: true },
+    })
+    const checkInCountMap = new Map(checkInCounts.map(r => [r.playerId, r._count.id]))
+
+    // Scores across all completed nights excluding the current one
+    const scores = await prisma.score.findMany({
+      where: {
+        playerId: { in: playerIds },
+        hole: { leagueNight: { status: 'COMPLETED', id: { not: id } } },
+      },
+      select: {
+        playerId: true,
+        made: true,
+        bonus: true,
+        hole: {
+          select: {
+            leagueNightId: true,
+            leagueNight: { select: { date: true } },
+          },
+        },
+      },
+    })
+
+    // Group scores by player → night
+    const playerNights = new Map<string, Map<string, { date: Date; score: number }>>()
+    for (const s of scores) {
+      const nid = s.hole.leagueNightId
+      if (!playerNights.has(s.playerId)) playerNights.set(s.playerId, new Map())
+      const nights = playerNights.get(s.playerId)!
+      if (!nights.has(nid)) nights.set(nid, { date: s.hole.leagueNight.date, score: 0 })
+      nights.get(nid)!.score += s.made + (s.bonus ? 1 : 0)
+    }
+
+    // Compute per-player stats
+    const statsMap = new Map<string, { avgNightScore: number | null; prevNightScore: number | null; totalCheckIns: number }>()
+    for (const playerId of playerIds) {
+      const nights = [...(playerNights.get(playerId)?.values() ?? [])]
+        .sort((a, b) => b.date.getTime() - a.date.getTime())
+      const avg = nights.length
+        ? Math.round(nights.reduce((s, n) => s + n.score, 0) / nights.length * 10) / 10
+        : null
+      statsMap.set(playerId, {
+        avgNightScore: avg,
+        prevNightScore: nights[0]?.score ?? null,
+        totalCheckIns: checkInCountMap.get(playerId) ?? 0,
+      })
+    }
+
+    const enriched = checkIns.map(c => ({
+      ...c,
+      stats: statsMap.get(c.playerId) ?? { avgNightScore: null, prevNightScore: null, totalCheckIns: 0 },
+    }))
+
+    return reply.send({ checkIns: enriched })
   })
 
   // POST /league-nights/:id/checkin/me – player checks themselves in
