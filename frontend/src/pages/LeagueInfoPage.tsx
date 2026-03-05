@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import ReactMarkdown from 'react-markdown'
 import toast from 'react-hot-toast'
 import { useAuth, authStore } from '../store/auth'
 import { api } from '../api/client'
 
-const INFO_MD = `
+// Hardcoded fallback shown when no custom content has been saved yet
+const FALLBACK_MD = `
 ## 📅 When
 Every Tuesday Starting Nov 4th through March 2026
 
@@ -81,10 +83,36 @@ Email [MVputtingleague@gmail.com](mailto:MVputtingleague@gmail.com) — add this
 export default function LeagueInfoPage() {
   const { user, isAuthenticated } = useAuth()
   const navigate = useNavigate()
+  const qc = useQueryClient()
   const [checked, setChecked] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [editText, setEditText] = useState('')
 
   const needsAck = isAuthenticated && !user?.hasAcknowledgedInfo
+  const isAdmin = user?.isAdmin ?? false
+
+  const { data: infoData } = useQuery<{ leagueInfoMd: string | null }>({
+    queryKey: ['league-info'],
+    queryFn: () => api.get('/settings/league-info'),
+  })
+
+  const content = infoData?.leagueInfoMd ?? FALLBACK_MD
+
+  const saveMut = useMutation({
+    mutationFn: (md: string) => api.patch('/admin/settings', { leagueInfoMd: md }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['league-info'] })
+      setEditing(false)
+      toast.success('League info updated')
+    },
+    onError: (e: any) => toast.error(e.message),
+  })
+
+  function startEdit() {
+    setEditText(content)
+    setEditing(true)
+  }
 
   async function handleAcknowledge() {
     if (!checked || saving) return
@@ -105,26 +133,79 @@ export default function LeagueInfoPage() {
 
   return (
     <div className="max-w-3xl mx-auto">
-      <div className="mb-6">
+      <div className="mb-6 flex items-start justify-between gap-4">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
           League Information
         </h1>
+        {isAdmin && !needsAck && (
+          editing ? (
+            <div className="flex gap-2 shrink-0">
+              <button
+                onClick={() => saveMut.mutate(editText)}
+                disabled={saveMut.isPending}
+                className="btn-primary text-sm"
+              >
+                {saveMut.isPending ? 'Saving…' : 'Save'}
+              </button>
+              <button
+                onClick={() => setEditing(false)}
+                className="btn-secondary text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={startEdit}
+              className="shrink-0 flex items-center gap-1.5 text-sm text-brand-600 hover:underline dark:text-brand-400"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
+              </svg>
+              Edit
+            </button>
+          )
+        )}
       </div>
 
-      <div className="bg-white dark:bg-forest-surface rounded-2xl border border-gray-200 dark:border-forest-border p-6 sm:p-8">
-        <div className="
-          prose prose-sm sm:prose-base dark:prose-invert max-w-none
-          prose-headings:font-bold
-          prose-headings:text-gray-900 dark:prose-headings:text-white
-          prose-p:text-gray-700 dark:prose-p:text-gray-200 prose-p:leading-relaxed
-          prose-strong:text-gray-900 dark:prose-strong:text-white
-          prose-a:text-brand-600 dark:prose-a:text-brand-400
-          prose-li:text-gray-700 dark:prose-li:text-gray-200
-          prose-hr:border-gray-200 dark:prose-hr:border-forest-border
-        ">
-          <ReactMarkdown>{INFO_MD}</ReactMarkdown>
+      {editing ? (
+        <div className="bg-white dark:bg-forest-surface rounded-2xl border border-gray-200 dark:border-forest-border p-6 sm:p-8 space-y-4">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Edit the league information using Markdown. Changes are visible to all players immediately after saving.
+          </p>
+          <textarea
+            className="input font-mono text-sm w-full"
+            rows={30}
+            value={editText}
+            onChange={e => setEditText(e.target.value)}
+          />
+          <div className="flex gap-3">
+            <button
+              onClick={() => saveMut.mutate(editText)}
+              disabled={saveMut.isPending}
+              className="btn-primary"
+            >
+              {saveMut.isPending ? 'Saving…' : 'Save Changes'}
+            </button>
+            <button onClick={() => setEditing(false)} className="btn-secondary">Cancel</button>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="bg-white dark:bg-forest-surface rounded-2xl border border-gray-200 dark:border-forest-border p-6 sm:p-8">
+          <div className="
+            prose prose-sm sm:prose-base dark:prose-invert max-w-none
+            prose-headings:font-bold
+            prose-headings:text-gray-900 dark:prose-headings:text-white
+            prose-p:text-gray-700 dark:prose-p:text-gray-200 prose-p:leading-relaxed
+            prose-strong:text-gray-900 dark:prose-strong:text-white
+            prose-a:text-brand-600 dark:prose-a:text-brand-400
+            prose-li:text-gray-700 dark:prose-li:text-gray-200
+            prose-hr:border-gray-200 dark:prose-hr:border-forest-border
+          ">
+            <ReactMarkdown>{content}</ReactMarkdown>
+          </div>
+        </div>
+      )}
 
       {needsAck && (
         <div className="mt-6 bg-brand-50 dark:bg-forest-surface border border-brand-200 dark:border-forest-border rounded-2xl p-6">

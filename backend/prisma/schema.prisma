@@ -14,9 +14,10 @@ datasource db {
 // ─── App Settings (singleton row, id = 1) ─────────────────────────────────────
 
 model Settings {
-  id            Int   @id @default(1)
-  housePerEntry Float @default(1)
-  eoyPerEntry   Float @default(2)
+  id            Int     @id @default(1)
+  housePerEntry Float   @default(1)
+  eoyPerEntry   Float   @default(2)
+  leagueInfoMd  String?
 }
 
 // ─── Auth & Users ─────────────────────────────────────────────────────────────

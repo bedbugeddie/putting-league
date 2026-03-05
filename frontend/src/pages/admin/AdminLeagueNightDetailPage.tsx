@@ -8,10 +8,16 @@ import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 import { useState } from 'react'
 
+type EditForm = {
+  date: string; tieBreakerMode: 'SPLIT' | 'PUTT_OFF'; notes: string
+}
+
 export default function AdminLeagueNightDetailPage() {
   const { id } = useParams<{ id: string }>()
   const qc = useQueryClient()
   const [skUserId, setSkUserId] = useState('')
+  const [showEdit, setShowEdit] = useState(false)
+  const [editForm, setEditForm] = useState<EditForm>({ date: '', tieBreakerMode: 'SPLIT', notes: '' })
 
   const { data, isLoading } = useQuery<{ leagueNight: LeagueNight }>({
     queryKey: ['league-night', id],
@@ -47,6 +53,21 @@ export default function AdminLeagueNightDetailPage() {
   const statusMut = useMutation({
     mutationFn: (status: string) => api.patch(`/admin/league-nights/${id}`, { status }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['league-night', id] }); toast.success('Status updated') },
+    onError: (e: any) => toast.error(e.message),
+  })
+
+  const editMut = useMutation({
+    mutationFn: (data: EditForm) =>
+      api.patch(`/admin/league-nights/${id}`, {
+        tieBreakerMode: data.tieBreakerMode,
+        notes: data.notes,
+        date: new Date(data.date).toISOString(),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['league-night', id] })
+      setShowEdit(false)
+      toast.success('League night updated')
+    },
     onError: (e: any) => toast.error(e.message),
   })
 
@@ -92,6 +113,15 @@ export default function AdminLeagueNightDetailPage() {
 
   const allCardsComplete = cards.length > 0 && cards.every(isCardComplete)
 
+  function openEdit() {
+    setEditForm({
+      date: format(new Date(night!.date), "yyyy-MM-dd'T'HH:mm"),
+      tieBreakerMode: night!.tieBreakerMode,
+      notes: night!.notes ?? '',
+    })
+    setShowEdit(true)
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between">
@@ -100,8 +130,66 @@ export default function AdminLeagueNightDetailPage() {
           <h1 className="text-2xl font-bold mt-1">{format(new Date(night.date), 'EEEE, MMMM d, yyyy h:mm a')}</h1>
           <p className="text-gray-500 text-sm">{night.season?.name}</p>
         </div>
-        <StatusBadge status={night.status} />
+        <div className="flex flex-col items-end gap-2">
+          <StatusBadge status={night.status} />
+          <button
+            onClick={() => showEdit ? setShowEdit(false) : openEdit()}
+            className="text-sm text-brand-600 hover:underline flex items-center gap-1"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg>
+            {showEdit ? 'Cancel Edit' : 'Edit Night'}
+          </button>
+        </div>
       </div>
+
+      {/* Edit form */}
+      {showEdit && (
+        <div className="card border-2 border-brand-200 dark:border-brand-700">
+          <h2 className="text-lg font-semibold mb-4">Edit Night Details</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">Date</label>
+              <input
+                type="datetime-local"
+                className="input"
+                value={editForm.date}
+                onChange={e => setEditForm(p => ({ ...p, date: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="label">Tie-Breaker Mode</label>
+              <select
+                className="input"
+                value={editForm.tieBreakerMode}
+                onChange={e => setEditForm(p => ({ ...p, tieBreakerMode: e.target.value as any }))}
+              >
+                <option value="SPLIT">Split Winnings</option>
+                <option value="PUTT_OFF">Putt-Off</option>
+              </select>
+            </div>
+            <div className="col-span-2">
+              <label className="label">Notes</label>
+              <textarea
+                className="input"
+                rows={3}
+                value={editForm.notes}
+                onChange={e => setEditForm(p => ({ ...p, notes: e.target.value }))}
+                placeholder="Optional notes visible to admins…"
+              />
+            </div>
+          </div>
+          <div className="flex gap-3 mt-4">
+            <button
+              className="btn-primary"
+              onClick={() => editMut.mutate(editForm)}
+              disabled={!editForm.date || editMut.isPending}
+            >
+              {editMut.isPending ? 'Saving…' : 'Save Changes'}
+            </button>
+            <button className="btn-secondary" onClick={() => setShowEdit(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
 
       {/* Status controls */}
       <div className="card">

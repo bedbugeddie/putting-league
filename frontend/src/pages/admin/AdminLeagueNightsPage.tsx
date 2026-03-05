@@ -15,6 +15,10 @@ type NightForm = {
   holeCount: number; roundCount: number; notes: string
 }
 
+type EditForm = {
+  date: string; tieBreakerMode: 'SPLIT' | 'PUTT_OFF'; notes: string
+}
+
 function formDefaults(nights: LeagueNight[], seasons: Season[]): NightForm {
   const latest = nights[0] // list is already sorted date desc
   return {
@@ -46,6 +50,9 @@ export default function AdminLeagueNightsPage() {
     seasonId: '', date: '', tieBreakerMode: 'SPLIT',
     holeCount: 6, roundCount: 3, notes: ''
   })
+
+  const [editingNight, setEditingNight] = useState<LeagueNight | null>(null)
+  const [editForm, setEditForm] = useState<EditForm>({ date: '', tieBreakerMode: 'SPLIT', notes: '' })
 
   const { data: nightsData, isLoading: nl } = useQuery<{ leagueNights: LeagueNight[] }>({
     queryKey: ['league-nights'],
@@ -85,6 +92,21 @@ export default function AdminLeagueNightsPage() {
     createMut.mutate(dates)
   }
 
+  const editMut = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: EditForm }) =>
+      api.patch(`/admin/league-nights/${id}`, {
+        tieBreakerMode: data.tieBreakerMode,
+        notes: data.notes,
+        date: new Date(data.date).toISOString(),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['league-nights'] })
+      setEditingNight(null)
+      toast.success('League night updated')
+    },
+    onError: (e: any) => toast.error(e.message),
+  })
+
   const statusMut = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       api.patch(`/admin/league-nights/${id}`, { status }),
@@ -96,6 +118,16 @@ export default function AdminLeagueNightsPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['league-nights'] }); toast.success('League night deleted') },
     onError: (e: any) => toast.error(e.message),
   })
+
+  function startEdit(n: LeagueNight) {
+    setEditingNight(n)
+    setEditForm({
+      date: format(new Date(n.date), "yyyy-MM-dd'T'HH:mm"),
+      tieBreakerMode: n.tieBreakerMode,
+      notes: n.notes ?? '',
+    })
+    setShowNew(false)
+  }
 
   const { sortKey, sortDir, toggleSort } = useSortable('date', 'asc')
 
@@ -121,7 +153,7 @@ export default function AdminLeagueNightsPage() {
       <Link to="/admin" className="text-sm text-brand-600 hover:underline">← Dashboard</Link>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">League Nights</h1>
-        <button className="btn-primary" onClick={() => { setForm(formDefaults(nights, seasons)); setShowNew(true) }}>+ New Night</button>
+        <button className="btn-primary" onClick={() => { setForm(formDefaults(nights, seasons)); setShowNew(true); setEditingNight(null) }}>+ New Night</button>
       </div>
 
       {showNew && (
@@ -218,6 +250,45 @@ export default function AdminLeagueNightsPage() {
         </div>
       )}
 
+      {/* Edit panel */}
+      {editingNight && (
+        <div className="card border-2 border-brand-200 dark:border-brand-700">
+          <div className="flex items-baseline justify-between mb-4">
+            <h2 className="text-lg font-semibold">
+              Edit — {format(new Date(editingNight.date), 'MMM d, yyyy h:mm a')}
+            </h2>
+            <button className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" onClick={() => setEditingNight(null)}>✕ Cancel</button>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">Date</label>
+              <input type="datetime-local" className="input" value={editForm.date} onChange={e => setEditForm(p => ({ ...p, date: e.target.value }))} />
+            </div>
+            <div>
+              <label className="label">Tie-Breaker</label>
+              <select className="input" value={editForm.tieBreakerMode} onChange={e => setEditForm(p => ({ ...p, tieBreakerMode: e.target.value as any }))}>
+                <option value="SPLIT">Split Winnings</option>
+                <option value="PUTT_OFF">Putt-Off</option>
+              </select>
+            </div>
+            <div className="col-span-2">
+              <label className="label">Notes</label>
+              <textarea className="input" rows={2} value={editForm.notes} onChange={e => setEditForm(p => ({ ...p, notes: e.target.value }))} />
+            </div>
+          </div>
+          <div className="flex gap-3 mt-4">
+            <button
+              className="btn-primary"
+              onClick={() => editMut.mutate({ id: editingNight.id, data: editForm })}
+              disabled={!editForm.date || editMut.isPending}
+            >
+              {editMut.isPending ? 'Saving…' : 'Save Changes'}
+            </button>
+            <button className="btn-secondary" onClick={() => setEditingNight(null)}>Cancel</button>
+          </div>
+        </div>
+      )}
+
       <div className="card overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -225,12 +296,12 @@ export default function AdminLeagueNightsPage() {
               <SortableHeader sortKey="date"   currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} className="text-left py-2 pr-4">Date</SortableHeader>
               <SortableHeader sortKey="season" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} className="text-left py-2 pr-4">Season</SortableHeader>
               <SortableHeader sortKey="status" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} className="text-center py-2 pr-4">Status</SortableHeader>
-              <th className="py-2 w-24 text-center">Actions</th>
+              <th className="py-2 w-28 text-center">Actions</th>
             </tr>
           </thead>
           <tbody>
             {sorted.map(n => (
-              <tr key={n.id} className="border-b border-gray-100">
+              <tr key={n.id} className={`border-b border-gray-100 ${editingNight?.id === n.id ? 'bg-brand-50 dark:bg-brand-900/10' : ''}`}>
                 <td className="py-2 pr-4 font-medium">
                   <Link to={`/admin/league-nights/${n.id}`} className="hover:text-brand-600 hover:underline">
                     {format(new Date(n.date), 'MMM d, yyyy h:mm a')}
@@ -243,6 +314,14 @@ export default function AdminLeagueNightsPage() {
                     <Link to={`/admin/league-nights/${n.id}`} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-brand-600" title="Details">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/><path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd"/></svg>
                     </Link>
+                    {/* Edit button */}
+                    <button
+                      className={`p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 ${editingNight?.id === n.id ? 'text-brand-600' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'}`}
+                      title="Edit"
+                      onClick={() => editingNight?.id === n.id ? setEditingNight(null) : startEdit(n)}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg>
+                    </button>
                     {n.status === 'SCHEDULED' && (
                       <button className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-green-600" title="Start night" onClick={() => statusMut.mutate({ id: n.id, status: 'IN_PROGRESS' })}>
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd"/></svg>
