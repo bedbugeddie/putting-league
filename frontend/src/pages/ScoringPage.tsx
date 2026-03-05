@@ -19,6 +19,11 @@ function rotateLeft<T>(arr: T[], by: number): T[] {
   return [...arr.slice(n), ...arr.slice(0, n)]
 }
 
+function getLastName(name: string): string {
+  const parts = name.trim().split(/\s+/)
+  return parts.length > 1 ? parts[parts.length - 1] : name
+}
+
 // ── Round summary ──────────────────────────────────────────────────────────────
 
 function RoundSummary({
@@ -59,6 +64,7 @@ function RoundSummary({
   const rows = [...rawRows].sort((a, b) => {
     const dir = sortDir === 'asc' ? 1 : -1
     if (sortKey === 'player') return dir * a.player.user.name.localeCompare(b.player.user.name)
+    if (sortKey === 'last') return dir * getLastName(a.player.user.name).localeCompare(getLastName(b.player.user.name))
     return dir * (a.total - b.total)
   })
 
@@ -75,6 +81,20 @@ function RoundSummary({
 
       {/* Scores table */}
       <div className="card p-0 overflow-hidden">
+        {/* Sort controls */}
+        <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 flex items-center gap-3 text-xs">
+          <span className="text-gray-400">Sort:</span>
+          {(['score', 'player', 'last'] as const).map(key => (
+            <button
+              key={key}
+              onClick={() => toggleSort(key)}
+              className={clsx('cursor-pointer select-none', sortKey === key ? 'text-brand-600 dark:text-brand-400 font-semibold' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300')}
+            >
+              {key === 'score' ? 'Score' : key === 'player' ? 'First' : 'Last'}
+              {' '}{sortKey === key ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
+            </button>
+          ))}
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -185,6 +205,7 @@ function FinishView({
   const rows = [...rawRows].sort((a, b) => {
     const dir = fSortDir === 'asc' ? 1 : -1
     if (fSortKey === 'player') return dir * a.player.user.name.localeCompare(b.player.user.name)
+    if (fSortKey === 'last') return dir * getLastName(a.player.user.name).localeCompare(getLastName(b.player.user.name))
     return dir * (a.totalScore - b.totalScore)
   })
 
@@ -218,15 +239,21 @@ function FinishView({
           <div className="flex items-center gap-1 text-xs">
             <button
               onClick={() => fToggleSort('score')}
-              className={clsx('px-2 py-0.5 rounded cursor-pointer select-none', fSortKey === 'score' ? 'text-brand-600 dark:text-brand-400 font-semibold' : 'text-gray-400 hover:text-gray-600')}
+              className={clsx('px-2 py-0.5 rounded cursor-pointer select-none', fSortKey === 'score' ? 'text-brand-600 dark:text-brand-400 font-semibold' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300')}
             >
               Score {fSortKey === 'score' ? (fSortDir === 'asc' ? '▲' : '▼') : '⇅'}
             </button>
             <button
               onClick={() => fToggleSort('player')}
-              className={clsx('px-2 py-0.5 rounded cursor-pointer select-none', fSortKey === 'player' ? 'text-brand-600 dark:text-brand-400 font-semibold' : 'text-gray-400 hover:text-gray-600')}
+              className={clsx('px-2 py-0.5 rounded cursor-pointer select-none', fSortKey === 'player' ? 'text-brand-600 dark:text-brand-400 font-semibold' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300')}
             >
-              Name {fSortKey === 'player' ? (fSortDir === 'asc' ? '▲' : '▼') : '⇅'}
+              First {fSortKey === 'player' ? (fSortDir === 'asc' ? '▲' : '▼') : '⇅'}
+            </button>
+            <button
+              onClick={() => fToggleSort('last')}
+              className={clsx('px-2 py-0.5 rounded cursor-pointer select-none', fSortKey === 'last' ? 'text-brand-600 dark:text-brand-400 font-semibold' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300')}
+            >
+              Last {fSortKey === 'last' ? (fSortDir === 'asc' ? '▲' : '▼') : '⇅'}
             </button>
           </div>
         </div>
@@ -445,6 +472,7 @@ export default function ScoringPage({ adminMode = false }: { adminMode?: boolean
     const dir = gridSortDir === 'asc' ? 1 : -1
     return [...players].sort((a, b) => {
       if (gridSortKey === 'division') return dir * ((a.division?.code ?? '').localeCompare(b.division?.code ?? ''))
+      if (gridSortKey === 'last') return dir * getLastName(a.user.name).localeCompare(getLastName(b.user.name))
       return dir * a.user.name.localeCompare(b.user.name)
     })
   })()
@@ -693,9 +721,14 @@ export default function ScoringPage({ adminMode = false }: { adminMode?: boolean
           <div className="hidden sm:grid sm:grid-cols-[1fr_3rem_1fr_1fr] gap-2 px-4 py-1.5 text-xs text-gray-400 font-medium border-b border-gray-100 dark:border-gray-700 dark:text-gray-500">
             {isAdmin && !activeCard ? (
               <>
-                <button onClick={() => toggleGridSort('player')} className={clsx('text-left cursor-pointer select-none', gridSortKey === 'player' ? 'text-brand-500' : '')}>
-                  Player {gridSortKey === 'player' ? (gridSortDir === 'asc' ? '▲' : '▼') : '⇅'}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => toggleGridSort('player')} className={clsx('cursor-pointer select-none', gridSortKey === 'player' ? 'text-brand-500' : '')}>
+                    First {gridSortKey === 'player' ? (gridSortDir === 'asc' ? '▲' : '▼') : '⇅'}
+                  </button>
+                  <button onClick={() => toggleGridSort('last')} className={clsx('cursor-pointer select-none', gridSortKey === 'last' ? 'text-brand-500' : '')}>
+                    Last {gridSortKey === 'last' ? (gridSortDir === 'asc' ? '▲' : '▼') : '⇅'}
+                  </button>
+                </div>
                 <button onClick={() => toggleGridSort('division')} className={clsx('text-left cursor-pointer select-none', gridSortKey === 'division' ? 'text-brand-500' : '')}>
                   Div {gridSortKey === 'division' ? (gridSortDir === 'asc' ? '▲' : '▼') : '⇅'}
                 </button>
