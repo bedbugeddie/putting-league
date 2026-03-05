@@ -171,24 +171,28 @@ export default function AdminCheckInPage() {
   const totalPool   = Math.max(0, totalGross - totalHouse - totalEoy)
 
   // Sort all players by first or last name
-  function getLastName(name: string) {
-    const parts = name.trim().split(/\s+/)
-    return parts.length > 1 ? parts[parts.length - 1] : name
+  function getLastName(user: { name: string; lastName?: string | null }) {
+    if (user.lastName) return user.lastName
+    // Fallback for legacy records without a stored lastName
+    const parts = user.name.trim().split(/\s+/)
+    return parts.length > 1 ? parts[parts.length - 1] : user.name
   }
-  function displayName(name: string) {
-    if (sortBy !== 'last') return name
-    const parts = name.trim().split(/\s+/)
-    if (parts.length < 2) return name
+  function displayName(user: { name: string; firstName?: string | null; lastName?: string | null }) {
+    if (sortBy !== 'last') return user.name
+    if (user.lastName && user.firstName) return `${user.lastName}, ${user.firstName}`
+    // Fallback for legacy records
+    const parts = user.name.trim().split(/\s+/)
+    if (parts.length < 2) return user.name
     const last = parts[parts.length - 1]
     const first = parts.slice(0, parts.length - 1).join(' ')
     return `${last}, ${first}`
   }
   const sortedPlayers = [...allPlayers].sort((a, b) => {
     const ka = sortBy === 'last'
-      ? getLastName(a.user.name).toLowerCase() + ' ' + a.user.name.toLowerCase()
+      ? getLastName(a.user).toLowerCase() + ' ' + a.user.name.toLowerCase()
       : a.user.name.toLowerCase()
     const kb = sortBy === 'last'
-      ? getLastName(b.user.name).toLowerCase() + ' ' + b.user.name.toLowerCase()
+      ? getLastName(b.user).toLowerCase() + ' ' + b.user.name.toLowerCase()
       : b.user.name.toLowerCase()
     return ka.localeCompare(kb)
   })
@@ -312,7 +316,7 @@ export default function AdminCheckInPage() {
                                 : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 dark:bg-forest-surface dark:border-forest-border dark:text-brand-200 dark:hover:bg-forest-mid'
                             )}
                           >
-                            <span className="font-medium">{displayName(p.user.name)}</span>
+                            <span className="font-medium">{displayName(p.user)}</span>
                             <span className={clsx('text-sm font-bold', isIn ? 'text-brand-800 dark:text-brand-300' : 'text-gray-400')}>
                               {isIn ? '✓ In' : 'Out'}
                             </span>
@@ -425,7 +429,7 @@ export default function AdminCheckInPage() {
                             )}
                           >
                             <span className="flex items-center gap-1.5">
-                              <span className="font-medium">{displayName(p.user.name)}</span>
+                              <span className="font-medium">{displayName(p.user)}</span>
                               {p.division?.code && (
                                 <span className={clsx(
                                   'text-xs font-mono',
