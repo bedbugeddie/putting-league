@@ -118,11 +118,6 @@ export default function Layout() {
 
             {/* Desktop nav */}
             <div className="hidden sm:flex items-center gap-4 text-sm">
-              {/* League Info: always visible */}
-              <NavLink to="/info"
-                className={({ isActive }) => isActive ? 'font-semibold underline' : 'hover:underline'}>
-                League Info
-              </NavLink>
               {isAuthenticated && !needsAck && (
                 <NavLink to={currentEventTo} end={currentEventEnd}
                   className={({ isActive }) => isActive ? 'font-semibold underline' : 'hover:underline'}>
@@ -178,6 +173,15 @@ export default function Layout() {
                         </div>
 
                         {/* Menu items */}
+                        <NavLink
+                          to="/info"
+                          onClick={closeUser}
+                          className={({ isActive }) =>
+                            `flex items-center gap-2 px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-forest transition-colors ${isActive ? 'text-brand-700 dark:text-brand-400 font-medium' : ''}`
+                          }
+                        >
+                          League Info
+                        </NavLink>
                         <NavLink
                           to="/profile"
                           onClick={closeUser}
@@ -238,15 +242,8 @@ export default function Layout() {
               )}
             </div>
 
-            {/* Mobile: League Info link (always) + avatar drawer toggle (auth only) */}
+            {/* Mobile: avatar drawer toggle (auth only) */}
             <div className="flex sm:hidden items-center gap-2">
-              <NavLink to="/info"
-                className={({ isActive }) =>
-                  `text-sm px-2 py-1 rounded transition-colors ${isActive ? 'font-semibold text-white' : 'text-brand-200 hover:text-white'}`
-                }
-              >
-                Info
-              </NavLink>
               {isAuthenticated && !needsAck ? (
                 <button
                   onClick={() => setMenuOpen(o => !o)}
