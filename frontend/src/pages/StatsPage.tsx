@@ -17,6 +17,7 @@ interface Records {
     count: number
   }[]
   highestSingleNight: number
+  highestByDivision: { divisionCode: string; score: number }[]
   topNightScores: {
     playerId: string
     playerName: string
@@ -24,6 +25,13 @@ interface Records {
     score: number
     date: string
   }[]
+  topNightScoresByDivision: Record<string, {
+    playerId: string
+    playerName: string
+    divisionCode: string
+    score: number
+    date: string
+  }[]>
 }
 
 interface NightAveragesData {
@@ -66,15 +74,16 @@ export default function StatsPage() {
     .filter(p => !divFilter || p.divisionCode === divFilter)
     .slice(0, 5)
 
-  const filteredTopScores = (records?.topNightScores ?? [])
-    .filter(s => !divFilter || s.divisionCode === divFilter)
-    .slice(0, 5)
+  // When a division is selected, use the pre-computed per-division top-5 so
+  // divisions with scores outside the overall top-5 still have data to show.
+  const filteredTopScores = divFilter
+    ? (records?.topNightScoresByDivision?.[divFilter] ?? [])
+    : (records?.topNightScores ?? [])
 
-  const filteredHighest = divFilter
-    ? Math.max(0, ...(records?.topNightScores ?? [])
-        .filter(s => s.divisionCode === divFilter)
-        .map(s => s.score))
-    : (records?.highestSingleNight ?? 0)
+  // Highest-by-division: when filtered just the one entry, otherwise all in score order
+  const highestByDivision = divFilter
+    ? (records?.highestByDivision ?? []).filter(d => d.divisionCode === divFilter)
+    : (records?.highestByDivision ?? [])
 
   // ── Graph data ─────────────────────────────────────────────────────────────
   // When a division is selected, show only that line; otherwise show all.
@@ -149,8 +158,29 @@ export default function StatsPage() {
         {/* Highest Single Night */}
         <div className="card">
           <h2 className="text-lg font-semibold mb-3">⚡ Highest Single Night</h2>
-          <p className="text-5xl font-bold text-brand-700">{filteredHighest}</p>
-          <p className="text-sm text-gray-500 mt-1">points in one league night</p>
+          {highestByDivision.length === 0 ? (
+            <p className="text-gray-400">No data yet</p>
+          ) : highestByDivision.length === 1 ? (
+            /* Single division selected — big number display */
+            <>
+              <p className="text-5xl font-bold text-brand-700">{highestByDivision[0].score}</p>
+              <p className="text-sm text-gray-500 mt-1">
+                points in one league night · {highestByDivision[0].divisionCode}
+              </p>
+            </>
+          ) : (
+            /* All divisions — per-division list */
+            <ul className="space-y-2">
+              {highestByDivision.map(d => (
+                <li key={d.divisionCode} className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    {d.divisionCode}
+                  </span>
+                  <span className="text-2xl font-bold text-brand-700">{d.score}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         {/* Top Scoring Players */}

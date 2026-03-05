@@ -172,8 +172,20 @@ export async function getLeagueRecords(seasonId?: string) {
   const sortedNightScores = [...nightPlayerMap.values()].sort((a, b) => b.score - a.score)
   const highestSingleNight = sortedNightScores[0]?.score ?? 0
 
-  // Top 20 individual night scores (enough for per-division client-side filtering)
-  const topNightScores = sortedNightScores.slice(0, 20).map(e => ({
+  // Highest single-night score per division — first occurrence in sorted list = max for that division
+  const highestByDivisionMap = new Map<string, number>()
+  for (const e of sortedNightScores) {
+    if (e.divisionCode && !highestByDivisionMap.has(e.divisionCode)) {
+      highestByDivisionMap.set(e.divisionCode, e.score)
+    }
+  }
+  const highestByDivision = [...highestByDivisionMap.entries()].map(([divisionCode, score]) => ({
+    divisionCode,
+    score,
+  }))
+
+  // Top 5 overall (for "All Divisions" view)
+  const topNightScores = sortedNightScores.slice(0, 5).map(e => ({
     playerId: e.playerId,
     playerName: e.playerName,
     divisionCode: e.divisionCode,
@@ -181,9 +193,32 @@ export async function getLeagueRecords(seasonId?: string) {
     date: e.date.toISOString(),
   }))
 
+  // Top 5 per division (for division-filtered view) — walk sorted list, stop at 5 per div
+  const topNightScoresByDivision: Record<string, {
+    playerId: string; playerName: string; divisionCode: string; score: number; date: string
+  }[]> = {}
+  const perDivCount = new Map<string, number>()
+  for (const e of sortedNightScores) {
+    if (!e.divisionCode) continue
+    const count = perDivCount.get(e.divisionCode) ?? 0
+    if (count < 5) {
+      if (!topNightScoresByDivision[e.divisionCode]) topNightScoresByDivision[e.divisionCode] = []
+      topNightScoresByDivision[e.divisionCode].push({
+        playerId: e.playerId,
+        playerName: e.playerName,
+        divisionCode: e.divisionCode,
+        score: e.score,
+        date: e.date.toISOString(),
+      })
+      perDivCount.set(e.divisionCode, count + 1)
+    }
+  }
+
   return {
     topBonusLeaders,
     highestSingleNight,
+    highestByDivision,
     topNightScores,
+    topNightScoresByDivision,
   }
 }
