@@ -387,6 +387,24 @@ export default function PlayerDashboardPage() {
         <Link to="/profile" className="btn-secondary text-sm">My Profile</Link>
       </div>
 
+      {/* Career stats */}
+      {stats ? (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <StatCard label="Total Score" value={stats.totalScore} />
+          <StatCard label="League Nights" value={stats.nightsPlayed} />
+          <StatCard label="Avg per Night" value={stats.avgPerNight} />
+          <StatCard label="Best Night" value={stats.highestNight} />
+          <StatCard label="3-for-3 Bonuses" value={stats.totalBonus} />
+          <StatCard label="Short Accuracy" value={`${(stats.shortAccuracy * 100).toFixed(1)}%`} />
+          <StatCard label="Long Accuracy" value={`${(stats.longAccuracy * 100).toFixed(1)}%`} />
+          <StatCard label="Total Made" value={stats.totalMade} sub={`of ${stats.totalAttempts * 3}`} />
+        </div>
+      ) : (
+        <div className="card text-center text-gray-500 py-10">
+          No scoring data yet. Play some rounds!
+        </div>
+      )}
+
       {/* Live section – shown when there's an active night and the player has a division or card */}
       {night && (myCard || myDivisionId) && (
         <div className="space-y-3">
@@ -433,24 +451,6 @@ export default function PlayerDashboardPage() {
               myPlayerId={playerId}
             />
           ) : null}
-        </div>
-      )}
-
-      {/* Career stats */}
-      {stats ? (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <StatCard label="Total Score" value={stats.totalScore} />
-          <StatCard label="League Nights" value={stats.nightsPlayed} />
-          <StatCard label="Avg per Night" value={stats.avgPerNight} />
-          <StatCard label="Best Night" value={stats.highestNight} />
-          <StatCard label="3-for-3 Bonuses" value={stats.totalBonus} />
-          <StatCard label="Short Accuracy" value={`${(stats.shortAccuracy * 100).toFixed(1)}%`} />
-          <StatCard label="Long Accuracy" value={`${(stats.longAccuracy * 100).toFixed(1)}%`} />
-          <StatCard label="Total Made" value={stats.totalMade} sub={`of ${stats.totalAttempts * 3}`} />
-        </div>
-      ) : (
-        <div className="card text-center text-gray-500 py-10">
-          No scoring data yet. Play some rounds!
         </div>
       )}
     </div>

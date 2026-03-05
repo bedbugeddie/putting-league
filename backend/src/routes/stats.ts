@@ -28,6 +28,80 @@ export async function statsRoutes(app: FastifyInstance) {
     return reply.send({ records })
   })
 
+  // GET per-division average scores per completed night (for trend line graph)
+  app.get('/stats/night-averages', async (req, reply) => {
+    const { seasonId } = req.query as { seasonId?: string }
+
+    const nightFilter = seasonId
+      ? { seasonId, status: 'COMPLETED' as const }
+      : { status: 'COMPLETED' as const }
+
+    const nights = await prisma.leagueNight.findMany({
+      where: nightFilter,
+      select: { id: true, date: true },
+      orderBy: { date: 'asc' },
+    })
+
+    if (!nights.length) return reply.send({ data: [], divisions: [] })
+
+    const nightIds = nights.map(n => n.id)
+
+    const scores = await prisma.score.findMany({
+      where: { hole: { leagueNightId: { in: nightIds } } },
+      select: {
+        playerId: true,
+        made: true,
+        bonus: true,
+        hole: { select: { leagueNightId: true } },
+        player: { select: { division: { select: { code: true, name: true } } } },
+      },
+    })
+
+    // Per-player-per-night totals
+    const playerNightMap = new Map<string, { nightId: string; divCode: string; score: number }>()
+    const divisionMap = new Map<string, { code: string; name: string }>()
+
+    for (const s of scores) {
+      const div = s.player.division
+      if (!div) continue
+      const key = `${s.playerId}::${s.hole.leagueNightId}`
+      const pts = s.made + (s.bonus ? 1 : 0)
+      if (!playerNightMap.has(key)) {
+        playerNightMap.set(key, { nightId: s.hole.leagueNightId, divCode: div.code, score: 0 })
+        if (!divisionMap.has(div.code)) divisionMap.set(div.code, { code: div.code, name: div.name })
+      }
+      playerNightMap.get(key)!.score += pts
+    }
+
+    // Aggregate per-night per-division: sum scores + player count for averaging
+    const nightDivTotals = new Map<string, { sum: number; count: number }>()
+
+    for (const entry of playerNightMap.values()) {
+      const key = `${entry.nightId}::${entry.divCode}`
+      if (!nightDivTotals.has(key)) nightDivTotals.set(key, { sum: 0, count: 0 })
+      const agg = nightDivTotals.get(key)!
+      agg.sum += entry.score
+      agg.count++
+    }
+
+    const divisions = [...divisionMap.values()]
+
+    const data = nights.map(n => {
+      const row: Record<string, string | number | null> = {
+        date: n.date.toISOString(),
+        leagueNightId: n.id,
+      }
+      for (const div of divisions) {
+        const key = `${n.id}::${div.code}`
+        const agg = nightDivTotals.get(key)
+        row[div.code] = agg ? Math.round((agg.sum / agg.count) * 100) / 100 : null
+      }
+      return row
+    })
+
+    return reply.send({ data, divisions })
+  })
+
   // GET per-night history for a player
   app.get('/players/:id/history', { preHandler: requireAuth }, async (req, reply) => {
     const { id } = req.params as { id: string }

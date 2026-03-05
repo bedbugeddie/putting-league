@@ -105,41 +105,85 @@ export async function getLeagueRecords(seasonId?: string) {
     where: { bonus: true, hole: nightFilter },
     _count: { id: true },
     orderBy: { _count: { id: 'desc' } },
-    take: 5,
+    take: 20,
   })
 
-  // Enrich bonus leaders with player names
+  // Enrich bonus leaders with player names and division
   const bonusPlayerIds = topBonus.map(b => b.playerId)
   const bonusPlayers = await prisma.player.findMany({
     where: { id: { in: bonusPlayerIds } },
-    include: { user: true },
+    include: { user: true, division: true },
   })
-  const nameMap = new Map(bonusPlayers.map(p => [p.id, p.user.name]))
+  const playerInfoMap = new Map(bonusPlayers.map(p => [p.id, {
+    name: p.user.name,
+    divisionCode: p.division?.code ?? '',
+    divisionName: p.division?.name ?? '',
+  }]))
   const topBonusLeaders = topBonus.map(b => ({
     playerId: b.playerId,
-    playerName: nameMap.get(b.playerId) ?? 'Unknown',
+    playerName: playerInfoMap.get(b.playerId)?.name ?? 'Unknown',
+    divisionCode: playerInfoMap.get(b.playerId)?.divisionCode ?? '',
     count: b._count.id,
   }))
 
-  // Highest single league night score – compute in memory
+  // All scores with player + night date for highest-score and top-scores computations
   const allScores = await prisma.score.findMany({
     where: { hole: nightFilter },
-    select: { playerId: true, made: true, bonus: true, hole: { select: { leagueNightId: true } } },
+    select: {
+      playerId: true,
+      made: true,
+      bonus: true,
+      hole: {
+        select: {
+          leagueNightId: true,
+          leagueNight: { select: { date: true } },
+        },
+      },
+      player: {
+        select: {
+          user: { select: { name: true } },
+          division: { select: { code: true, name: true } },
+        },
+      },
+    },
   })
 
-  const nightPlayerMap = new Map<string, number>()
+  // Build per-player-per-night totals
+  const nightPlayerMap = new Map<string, {
+    score: number; playerId: string; playerName: string
+    divisionCode: string; date: Date
+  }>()
+
   for (const s of allScores) {
     const key = `${s.playerId}::${s.hole.leagueNightId}`
-    nightPlayerMap.set(key, (nightPlayerMap.get(key) ?? 0) + s.made + (s.bonus ? 1 : 0))
+    const pts = s.made + (s.bonus ? 1 : 0)
+    if (!nightPlayerMap.has(key)) {
+      nightPlayerMap.set(key, {
+        score: 0,
+        playerId: s.playerId,
+        playerName: s.player.user.name,
+        divisionCode: s.player.division?.code ?? '',
+        date: s.hole.leagueNight.date,
+      })
+    }
+    nightPlayerMap.get(key)!.score += pts
   }
 
-  const highestSingleNight = Math.max(...nightPlayerMap.values(), 0)
+  const sortedNightScores = [...nightPlayerMap.values()].sort((a, b) => b.score - a.score)
+  const highestSingleNight = sortedNightScores[0]?.score ?? 0
 
-  // Most improved: compare first half vs second half of nights played
-  // (simplified – return raw data for the frontend to display)
+  // Top 20 individual night scores (enough for per-division client-side filtering)
+  const topNightScores = sortedNightScores.slice(0, 20).map(e => ({
+    playerId: e.playerId,
+    playerName: e.playerName,
+    divisionCode: e.divisionCode,
+    score: e.score,
+    date: e.date.toISOString(),
+  }))
 
   return {
     topBonusLeaders,
     highestSingleNight,
+    topNightScores,
   }
 }
