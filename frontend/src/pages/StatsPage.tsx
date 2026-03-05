@@ -46,6 +46,29 @@ const DIVISION_COLORS = [
   '#7c3aed', '#0891b2', '#be185d', '#78716c',
 ]
 
+// ── Linear regression helper ───────────────────────────────────────────────────
+// Returns the ordinary-least-squares regression y-value at each index i.
+// Indices where the input is null still receive a computed value so the line
+// spans the full date range without gaps.
+function linearRegression(values: (number | null)[]): (number | null)[] {
+  const pts = values
+    .map((v, i) => v !== null ? { x: i, y: v } : null)
+    .filter((p): p is { x: number; y: number } => p !== null)
+  if (pts.length < 2) return values.map(() => null)
+
+  const n = pts.length
+  const sumX  = pts.reduce((s, p) => s + p.x,       0)
+  const sumY  = pts.reduce((s, p) => s + p.y,       0)
+  const sumXY = pts.reduce((s, p) => s + p.x * p.y, 0)
+  const sumX2 = pts.reduce((s, p) => s + p.x * p.x, 0)
+  const denom = n * sumX2 - sumX * sumX
+  if (denom === 0) return values.map(() => Math.round((sumY / n) * 100) / 100)
+
+  const slope     = (n * sumXY - sumX * sumY) / denom
+  const intercept = (sumY - slope * sumX) / n
+  return values.map((_, i) => Math.round((slope * i + intercept) * 100) / 100)
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function StatsPage() {
@@ -91,10 +114,31 @@ export default function StatsPage() {
     ? divisions.filter(d => d.code === divFilter)
     : divisions
 
-  const graphData = (avgData?.data ?? []).map(row => {
+  // All-time average for each visible division (mean of per-night averages)
+  const divisionStats = graphDivisions.map(div => {
+    const vals = (avgData?.data ?? [])
+      .map(row => row[div.code] as number | null)
+      .filter((v): v is number => v !== null)
+    const avg = vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : null
+    return { code: div.code, name: div.name, avg }
+  })
+
+  // Linear trendline per division — only computed when a single division is selected
+  const trendValues: Record<string, (number | null)[]> = {}
+  if (divFilter) {
+    for (const div of graphDivisions) {
+      const yVals = (avgData?.data ?? []).map(row => row[div.code] as number | null)
+      trendValues[div.code] = linearRegression(yVals)
+    }
+  }
+
+  const graphData = (avgData?.data ?? []).map((row, i) => {
     const entry: Record<string, string | number | null> = { date: row.date as string }
     for (const div of graphDivisions) {
       entry[div.code] = row[div.code] as number | null
+      if (divFilter && trendValues[div.code]) {
+        entry[`${div.code}_trend`] = trendValues[div.code][i] ?? null
+      }
     }
     return entry
   })
@@ -185,7 +229,7 @@ export default function StatsPage() {
 
         {/* Top Scoring Players */}
         <div className="card sm:col-span-2">
-          <h2 className="text-lg font-semibold mb-3">🔥 Top Scoring Players</h2>
+          <h2 className="text-lg font-semibold mb-3">🔥 Top Single Nights</h2>
           {filteredTopScores.length ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -238,27 +282,62 @@ export default function StatsPage() {
               />
               <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} />
               <Tooltip
-                labelFormatter={(v) => {
-                  try { return format(new Date(v as string), 'MMMM d, yyyy') } catch { return String(v) }
+                content={({ active, payload, label }) => {
+                  if (!active || !payload?.length) return null
+                  // Suppress trendline entries from the tooltip
+                  const filtered = payload.filter(
+                    p => !String(p.dataKey ?? '').endsWith('_trend')
+                  )
+                  if (!filtered.length) return null
+                  let dateLabel = String(label)
+                  try { dateLabel = format(new Date(String(label)), 'MMMM d, yyyy') } catch { /* keep raw */ }
+                  return (
+                    <div className="bg-white border border-gray-200 rounded-lg shadow-sm px-3 py-2 text-sm">
+                      <p className="font-medium text-gray-700 mb-1.5">{dateLabel}</p>
+                      {filtered.map((p, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <span style={{ color: p.color ?? '#888' }}>●</span>
+                          <span className="text-gray-600">{p.name}:</span>
+                          <span className="font-semibold text-gray-800">
+                            {p.value != null ? Number(p.value).toFixed(2) : '—'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )
                 }}
-                formatter={(value, name) => [
-                  value != null ? Number(value).toFixed(2) : '—',
-                  name as string,
-                ]}
               />
               <Legend />
-              {graphDivisions.map((div, i) => (
-                <Line
-                  key={div.code}
-                  type="monotone"
-                  dataKey={div.code}
-                  name={div.name}
-                  stroke={DIVISION_COLORS[i % DIVISION_COLORS.length]}
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
-                  connectNulls
-                />
-              ))}
+              {graphDivisions.flatMap((div, i) => {
+                const color = DIVISION_COLORS[i % DIVISION_COLORS.length]
+                const stat = divisionStats.find(d => d.code === div.code)
+                const avgLabel = stat?.avg != null ? ` (avg: ${stat.avg.toFixed(1)})` : ''
+                return [
+                  <Line
+                    key={div.code}
+                    type="monotone"
+                    dataKey={div.code}
+                    name={`${div.name}${avgLabel}`}
+                    stroke={color}
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    connectNulls
+                  />,
+                  ...(divFilter ? [
+                    <Line
+                      key={`${div.code}_trend`}
+                      type="linear"
+                      dataKey={`${div.code}_trend`}
+                      stroke={color}
+                      strokeWidth={1.5}
+                      strokeDasharray="6 3"
+                      dot={false}
+                      legendType="none"
+                      connectNulls
+                    />,
+                  ] : []),
+                ]
+              })}
             </LineChart>
           </ResponsiveContainer>
         </div>
