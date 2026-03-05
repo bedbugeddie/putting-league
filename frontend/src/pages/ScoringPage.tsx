@@ -19,9 +19,11 @@ function rotateLeft<T>(arr: T[], by: number): T[] {
   return [...arr.slice(n), ...arr.slice(0, n)]
 }
 
-function getLastName(name: string): string {
-  const parts = name.trim().split(/\s+/)
-  return parts.length > 1 ? parts[parts.length - 1] : name
+function getLastName(user: { name: string; lastName?: string | null }): string {
+  if (user.lastName) return user.lastName
+  // Fallback for legacy records without a stored lastName
+  const parts = user.name.trim().split(/\s+/)
+  return parts.length > 1 ? parts[parts.length - 1] : user.name
 }
 
 // ── Round summary ──────────────────────────────────────────────────────────────
@@ -64,7 +66,7 @@ function RoundSummary({
   const rows = [...rawRows].sort((a, b) => {
     const dir = sortDir === 'asc' ? 1 : -1
     if (sortKey === 'player') return dir * a.player.user.name.localeCompare(b.player.user.name)
-    if (sortKey === 'last') return dir * getLastName(a.player.user.name).localeCompare(getLastName(b.player.user.name))
+    if (sortKey === 'last') return dir * getLastName(a.player.user).localeCompare(getLastName(b.player.user))
     return dir * (a.total - b.total)
   })
 
@@ -205,7 +207,7 @@ function FinishView({
   const rows = [...rawRows].sort((a, b) => {
     const dir = fSortDir === 'asc' ? 1 : -1
     if (fSortKey === 'player') return dir * a.player.user.name.localeCompare(b.player.user.name)
-    if (fSortKey === 'last') return dir * getLastName(a.player.user.name).localeCompare(getLastName(b.player.user.name))
+    if (fSortKey === 'last') return dir * getLastName(a.player.user).localeCompare(getLastName(b.player.user))
     return dir * (a.totalScore - b.totalScore)
   })
 
@@ -472,7 +474,7 @@ export default function ScoringPage({ adminMode = false }: { adminMode?: boolean
     const dir = gridSortDir === 'asc' ? 1 : -1
     return [...players].sort((a, b) => {
       if (gridSortKey === 'division') return dir * ((a.division?.code ?? '').localeCompare(b.division?.code ?? ''))
-      if (gridSortKey === 'last') return dir * getLastName(a.user.name).localeCompare(getLastName(b.user.name))
+      if (gridSortKey === 'last') return dir * getLastName(a.user).localeCompare(getLastName(b.user))
       return dir * a.user.name.localeCompare(b.user.name)
     })
   })()
