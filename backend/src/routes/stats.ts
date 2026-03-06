@@ -32,9 +32,10 @@ export async function statsRoutes(app: FastifyInstance) {
   app.get('/stats/night-averages', async (req, reply) => {
     const { seasonId } = req.query as { seasonId?: string }
 
+    const statuses = ['COMPLETED', 'IN_PROGRESS'] as const
     const nightFilter = seasonId
-      ? { seasonId, status: { in: ['COMPLETED', 'IN_PROGRESS'] as const } }
-      : { status: { in: ['COMPLETED', 'IN_PROGRESS'] as const } }
+      ? { seasonId, status: { in: [...statuses] } }
+      : { status: { in: [...statuses] } }
 
     const nights = await prisma.leagueNight.findMany({
       where: nightFilter,
