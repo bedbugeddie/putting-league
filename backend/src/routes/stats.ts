@@ -85,7 +85,7 @@ export async function statsRoutes(app: FastifyInstance) {
       agg.count++
     }
 
-    const divisions = [...divisionMap.values()]
+    const divisions = [...divisionMap.values()].sort((a, b) => a.code.localeCompare(b.code))
 
     const data = nights.map(n => {
       const row: Record<string, string | number | null> = {
