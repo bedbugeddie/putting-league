@@ -394,7 +394,20 @@ export default function ScoringPage({ adminMode = false }: { adminMode?: boolean
     const myCard = user?.player?.id ? cards.find(c => c.scorekeeperId === user.player!.id) : null
     const adminCard = isAdmin && cardIdParam ? cards.find(c => c.id === cardIdParam) ?? null : null
     const cardForEffect = adminCard ?? myCard
-    if (!cardForEffect) return
+
+    if (!cardForEffect) {
+      // Historical nights: admin viewing a past night with no card records → position to last hole/round
+      if (isAdmin && cards.length === 0 && scoresData.scores.length > 0) {
+        const allHoles = night.holes ?? []
+        const rounds = night.rounds ?? []
+        if (rounds.length > 0 && allHoles.length > 0) {
+          autoPositioned.current = true
+          setRoundIndex(rounds.length - 1)
+          setHoleIndex(allHoles.length - 1)
+        }
+      }
+      return
+    }
 
     const allHoles = night.holes ?? []
     const rounds = night.rounds ?? []
@@ -458,14 +471,34 @@ export default function ScoringPage({ adminMode = false }: { adminMode?: boolean
   const adminCard = isAdmin && cardIdParam ? cards.find(c => c.id === cardIdParam) ?? null : null
   const activeCard = adminCard ?? myCard
 
+  // Build score map early so it's available for player derivation below
+  const existingScores = scoresData?.scores ?? []
+  const scoreMap = new Map<ScoreKey, Score>()
+  for (const s of existingScores) {
+    scoreMap.set(`${s.playerId}::${s.holeId}::${s.roundId}::${s.position}` as ScoreKey, s)
+  }
+
+  // For historical nights with no card records, derive the player list from the score data itself
+  const playersFromScores: Player[] = (isAdmin && cards.length === 0 && existingScores.length > 0)
+    ? Array.from(
+        new Map(
+          existingScores
+            .filter((s): s is Score & { player: Player } => !!s.player)
+            .map(s => [s.playerId, s.player!])
+        ).values()
+      ).sort((a, b) => a.user.name.localeCompare(b.user.name))
+    : []
+
   const basePlayers: Player[] = activeCard?.players.map(cp => cp.player) ?? []
 
   const players: Player[] = isAdmin && !activeCard
-    ? Array.from(
-        new Map(
-          cards.flatMap(c => c.players.map(cp => cp.player)).map(p => [p.id, p])
-        ).values()
-      )
+    ? playersFromScores.length > 0
+      ? playersFromScores
+      : Array.from(
+          new Map(
+            cards.flatMap(c => c.players.map(cp => cp.player)).map(p => [p.id, p])
+          ).values()
+        )
     : rotateLeft(basePlayers, holeIndex)
 
   // Sorted view for admin all-cards mode only; otherwise preserve throw-order rotation
@@ -483,12 +516,6 @@ export default function ScoringPage({ adminMode = false }: { adminMode?: boolean
   const summaryPlayers: Player[] = isAdmin && !activeCard
     ? players
     : basePlayers
-
-  const existingScores = scoresData?.scores ?? []
-  const scoreMap = new Map<ScoreKey, Score>()
-  for (const s of existingScores) {
-    scoreMap.set(`${s.playerId}::${s.holeId}::${s.roundId}::${s.position}` as ScoreKey, s)
-  }
 
   function switchCard(newCardId: string) {
     setHoleIndex(0)
