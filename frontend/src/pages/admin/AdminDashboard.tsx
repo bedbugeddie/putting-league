@@ -78,7 +78,7 @@ export default function AdminDashboard() {
           </div>
           <div className="space-y-2">
             {nights.map(n => (
-              <Link key={n.id} to={`/admin/league-nights/${n.id}`} className="flex items-center justify-between p-2 rounded hover:bg-gray-50">
+              <Link key={n.id} to={`/admin/league-nights/${n.id}`} className="flex items-center justify-between p-2 rounded hover:bg-gray-50 dark:hover:bg-forest-mid">
                 <span className="text-sm font-medium">{format(new Date(n.date), 'MMM d, yyyy')}</span>
                 <StatusBadge status={n.status} />
               </Link>
@@ -97,7 +97,7 @@ export default function AdminDashboard() {
             {pastNights.map(n => {
               const fin = nightFinancialsMap.get(n.id)
               return (
-                <Link key={n.id} to={`/admin/league-nights/${n.id}`} className="flex items-center justify-between p-2 rounded hover:bg-gray-50 gap-2">
+                <Link key={n.id} to={`/admin/league-nights/${n.id}`} className="flex items-center justify-between p-2 rounded hover:bg-gray-50 dark:hover:bg-forest-mid gap-2">
                   <div>
                     <p className="text-sm font-medium">{format(new Date(n.date), 'MMM d, yyyy')}</p>
                     {fin && (
