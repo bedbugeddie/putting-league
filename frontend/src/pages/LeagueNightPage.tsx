@@ -1,8 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, Link } from 'react-router-dom'
+import { useState } from 'react'
 import { api } from '../api/client'
 import { useAuth } from '../store/auth'
-import type { LeagueNight, CheckIn, Card } from '../api/types'
+import type { LeagueNight, CheckIn, Card, Division } from '../api/types'
 import StatusBadge from '../components/ui/StatusBadge'
 import Spinner from '../components/ui/Spinner'
 import { format, isSameDay } from 'date-fns'
@@ -13,6 +14,10 @@ export default function LeagueNightPage() {
   const { id } = useParams<{ id: string }>()
   const { isAuthenticated, isAdmin, user } = useAuth()
   const qc = useQueryClient()
+
+  // Division confirmation step state
+  const [showDivisionStep, setShowDivisionStep] = useState(false)
+  const [pendingDivisionId, setPendingDivisionId] = useState<string | null>(null)
 
   const { data, isLoading } = useQuery<{ leagueNight: LeagueNight }>({
     queryKey: ['league-night', id],
@@ -27,10 +32,19 @@ export default function LeagueNightPage() {
     refetchInterval: 5000,
   })
 
+  const { data: divisionsData } = useQuery<{ divisions: Division[] }>({
+    queryKey: ['divisions'],
+    queryFn: () => api.get('/divisions'),
+    enabled: isAuthenticated,
+  })
+  const divisions = divisionsData?.divisions ?? []
+
   const checkInMut = useMutation({
-    mutationFn: () => api.post(`/league-nights/${id}/checkin/me`, {}),
+    mutationFn: (divisionId: string | null) =>
+      api.post(`/league-nights/${id}/checkin/me`, { divisionId }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['checkins', id] })
+      setShowDivisionStep(false)
       toast.success("You're checked in!")
     },
     onError: (e: any) => toast.error(e.message),
@@ -100,10 +114,17 @@ export default function LeagueNightPage() {
   // Is the league night happening today?
   const isTonight = isSameDay(new Date(night.date), new Date())
 
-  // Group checked-in players by division for the "This Week's Players" section
+  // Start division-confirmation flow
+  function handleCheckInClick() {
+    const currentDivId = myCheckIn?.divisionId ?? user?.player?.division?.id ?? null
+    setPendingDivisionId(currentDivId)
+    setShowDivisionStep(true)
+  }
+
+  // Group checked-in players by their check-in division (not player's current division)
   const byDivision = new Map<string, { label: string; checkIns: CheckIn[] }>()
   checkIns.forEach(c => {
-    const div = c.player.division
+    const div = c.division
     const key = div?.code ?? '__none__'
     const label = div ? `${div.name} (${div.code})` : 'No Division'
     if (!byDivision.has(key)) byDivision.set(key, { label, checkIns: [] })
@@ -129,44 +150,77 @@ export default function LeagueNightPage() {
       {/* ── Self check-in banner ── */}
       {canCheckIn && (
         <div className={clsx(
-          'rounded-xl p-4 flex items-center justify-between',
+          'rounded-xl p-4',
           iAmCheckedIn
             ? 'bg-brand-50 border border-brand-200 dark:bg-forest-mid dark:border-brand-700'
-            : 'bg-yellow-50 border border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800'
+            : showDivisionStep
+              ? 'bg-yellow-50 border border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800'
+              : 'bg-yellow-50 border border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800'
         )}>
-          <div>
-            {iAmCheckedIn ? (
-              <>
+          {iAmCheckedIn ? (
+            <div className="flex items-center justify-between">
+              <div>
                 <p className="font-semibold text-brand-800 dark:text-brand-200">✓ You're checked in!</p>
-                <p className="text-sm text-brand-600 dark:text-brand-300">You'll appear on the leaderboard and scorecard.</p>
-              </>
-            ) : (
-              <>
+                <p className="text-sm text-brand-600 dark:text-brand-300">
+                  {myCheckIn?.division
+                    ? `Division: ${myCheckIn.division.name} (${myCheckIn.division.code})`
+                    : "You'll appear on the leaderboard and scorecard."}
+                </p>
+              </div>
+              <button
+                onClick={() => checkOutMut.mutate()}
+                disabled={checkOutMut.isPending}
+                className="btn-secondary text-sm"
+              >
+                Cancel Check-In
+              </button>
+            </div>
+          ) : showDivisionStep ? (
+            <div className="space-y-3">
+              <p className="font-semibold text-yellow-800 dark:text-yellow-200">Confirm your division for tonight</p>
+              <select
+                value={pendingDivisionId ?? ''}
+                onChange={e => setPendingDivisionId(e.target.value || null)}
+                className="w-full rounded-lg border border-yellow-300 bg-white px-3 py-2 text-sm dark:bg-gray-800 dark:border-yellow-700 dark:text-white"
+              >
+                <option value="">— Select a division —</option>
+                {divisions.map(d => (
+                  <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
+                ))}
+              </select>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => checkInMut.mutate(pendingDivisionId)}
+                  disabled={!pendingDivisionId || checkInMut.isPending}
+                  className="btn-primary text-sm"
+                >
+                  {checkInMut.isPending ? 'Checking in…' : 'Confirm & Check In'}
+                </button>
+                <button
+                  onClick={() => setShowDivisionStep(false)}
+                  className="btn-secondary text-sm"
+                >
+                  Back
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <div>
                 <p className="font-semibold text-yellow-800 dark:text-yellow-200">
                   {isTonight
                     ? 'Are you playing tonight?'
                     : `Are you playing on ${format(new Date(night.date), 'EEE, MMM d')}?`}
                 </p>
                 <p className="text-sm text-yellow-700 dark:text-yellow-300">Check in so we know you're coming.</p>
-              </>
-            )}
-          </div>
-          {iAmCheckedIn ? (
-            <button
-              onClick={() => checkOutMut.mutate()}
-              disabled={checkOutMut.isPending}
-              className="btn-secondary text-sm"
-            >
-              Cancel Check-In
-            </button>
-          ) : (
-            <button
-              onClick={() => checkInMut.mutate()}
-              disabled={checkInMut.isPending}
-              className="btn-primary text-sm"
-            >
-              {checkInMut.isPending ? 'Checking in…' : 'Check In'}
-            </button>
+              </div>
+              <button
+                onClick={handleCheckInClick}
+                className="btn-primary text-sm"
+              >
+                Check In
+              </button>
+            </div>
           )}
         </div>
       )}

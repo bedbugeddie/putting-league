@@ -67,6 +67,7 @@ model Division {
   updatedAt   DateTime @updatedAt
 
   players     Player[]
+  checkIns    CheckIn[]
 }
 
 model Player {
@@ -139,6 +140,8 @@ model CheckIn {
   leagueNight   LeagueNight @relation(fields: [leagueNightId], references: [id], onDelete: Cascade)
   playerId      String
   player        Player      @relation(fields: [playerId], references: [id])
+  divisionId    String?
+  division      Division?   @relation(fields: [divisionId], references: [id])
   checkedInAt   DateTime    @default(now())
   checkedInBy   String?     // userId of admin who checked them in
   hasPaid       Boolean     @default(false)

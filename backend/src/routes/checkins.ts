@@ -11,9 +11,20 @@ const bulkCheckInSchema = z.object({
   playerIds: z.array(z.string().cuid()),
 })
 
-const paymentSchema = z.object({
-  hasPaid: z.boolean(),
+const selfCheckInSchema = z.object({
+  divisionId: z.string().cuid().nullable().optional(),
 })
+
+const patchCheckInSchema = z.object({
+  hasPaid: z.boolean().optional(),
+  divisionId: z.string().cuid().nullable().optional(),
+})
+
+// Include shape reused across all endpoints
+const checkInInclude = {
+  player: { include: { user: true, division: true } },
+  division: true,
+} as const
 
 export async function checkInRoutes(app: FastifyInstance) {
   // GET all check-ins for a league night (public)
@@ -21,9 +32,7 @@ export async function checkInRoutes(app: FastifyInstance) {
     const { id } = req.params as { id: string }
     const checkIns = await prisma.checkIn.findMany({
       where: { leagueNightId: id },
-      include: {
-        player: { include: { user: true, division: true } },
-      },
+      include: checkInInclude,
       orderBy: { player: { user: { name: 'asc' } } },
     })
 
@@ -94,6 +103,7 @@ export async function checkInRoutes(app: FastifyInstance) {
   // POST /league-nights/:id/checkin/me – player checks themselves in
   app.post('/league-nights/:id/checkin/me', { preHandler: requireAuth }, async (req, reply) => {
     const { id } = req.params as { id: string }
+    const body = selfCheckInSchema.parse(req.body)
 
     const player = await prisma.player.findUnique({
       where: { userId: req.user!.userId },
@@ -102,12 +112,15 @@ export async function checkInRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: 'No player profile found. Ask an admin to add you.' })
     }
 
+    // Use provided divisionId, falling back to player's current division
+    const divisionId = body.divisionId !== undefined ? body.divisionId : player.divisionId
+
     const [checkIn] = await prisma.$transaction([
       prisma.checkIn.upsert({
         where: { leagueNightId_playerId: { leagueNightId: id, playerId: player.id } },
-        create: { leagueNightId: id, playerId: player.id, checkedInBy: req.user!.userId },
-        update: {},
-        include: { player: { include: { user: true, division: true } } },
+        create: { leagueNightId: id, playerId: player.id, divisionId, checkedInBy: req.user!.userId },
+        update: { divisionId },
+        include: checkInInclude,
       }),
       // If they were previously marked as left on a card, restore them
       prisma.cardPlayer.updateMany({
@@ -141,12 +154,14 @@ export async function checkInRoutes(app: FastifyInstance) {
     const { id } = req.params as { id: string }
     const { playerId } = checkInSchema.parse(req.body)
 
+    const player = await prisma.player.findUniqueOrThrow({ where: { id: playerId } })
+
     const [checkIn] = await prisma.$transaction([
       prisma.checkIn.upsert({
         where: { leagueNightId_playerId: { leagueNightId: id, playerId } },
-        create: { leagueNightId: id, playerId, checkedInBy: req.user!.userId },
+        create: { leagueNightId: id, playerId, divisionId: player.divisionId, checkedInBy: req.user!.userId },
         update: { checkedInBy: req.user!.userId },
-        include: { player: { include: { user: true, division: true } } },
+        include: checkInInclude,
       }),
       // If they were previously marked as left on a card, restore them
       prisma.cardPlayer.updateMany({
@@ -162,10 +177,18 @@ export async function checkInRoutes(app: FastifyInstance) {
     const { id } = req.params as { id: string }
     const { playerIds } = bulkCheckInSchema.parse(req.body)
 
+    // Fetch all players to get their current divisions
+    const players = await prisma.player.findMany({
+      where: { id: { in: playerIds } },
+      select: { id: true, divisionId: true },
+    })
+    const divisionMap = new Map(players.map(p => [p.id, p.divisionId]))
+
     await prisma.checkIn.createMany({
       data: playerIds.map(playerId => ({
         leagueNightId: id,
         playerId,
+        divisionId: divisionMap.get(playerId) ?? null,
         checkedInBy: req.user!.userId,
       })),
       skipDuplicates: true,
@@ -173,7 +196,7 @@ export async function checkInRoutes(app: FastifyInstance) {
 
     const checkIns = await prisma.checkIn.findMany({
       where: { leagueNightId: id },
-      include: { player: { include: { user: true, division: true } } },
+      include: checkInInclude,
       orderBy: { player: { user: { name: 'asc' } } },
     })
     return reply.send({ checkIns })
@@ -190,15 +213,24 @@ export async function checkInRoutes(app: FastifyInstance) {
     return reply.status(204).send()
   })
 
-  // PATCH mark player as paid/unpaid – admin/scorekeeper only
+  // PATCH update check-in (payment status and/or division) – admin/scorekeeper only
   app.patch('/league-nights/:id/checkins/:playerId', { preHandler: requireScorekeeper }, async (req, reply) => {
     const { id, playerId } = req.params as { id: string; playerId: string }
-    const { hasPaid } = paymentSchema.parse(req.body)
+    const { hasPaid, divisionId } = patchCheckInSchema.parse(req.body)
+
+    const checkInData: { hasPaid?: boolean; divisionId?: string | null } = {}
+    if (hasPaid !== undefined) checkInData.hasPaid = hasPaid
+    if (divisionId !== undefined) checkInData.divisionId = divisionId
+
+    // When division changes, keep the player's permanent record in sync
+    if (divisionId !== undefined) {
+      await prisma.player.update({ where: { id: playerId }, data: { divisionId } })
+    }
 
     const checkIn = await prisma.checkIn.update({
       where: { leagueNightId_playerId: { leagueNightId: id, playerId } },
-      data: { hasPaid },
-      include: { player: { include: { user: true, division: true } } },
+      data: checkInData,
+      include: checkInInclude,
     })
     return reply.send({ checkIn })
   })

@@ -154,6 +154,8 @@ export interface CheckIn {
   id: string
   leagueNightId: string
   playerId: string
+  divisionId: string | null
+  division: Division | null
   checkedInAt: string
   hasPaid: boolean
   player: Player

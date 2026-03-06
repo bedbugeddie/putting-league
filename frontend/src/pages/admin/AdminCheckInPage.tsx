@@ -133,7 +133,7 @@ export default function AdminCheckInPage() {
 
   const changeDivisionMut = useMutation({
     mutationFn: ({ playerId, divisionId }: { playerId: string; divisionId: string | null }) =>
-      api.patch(`/admin/players/${playerId}`, { divisionId }),
+      api.patch(`/league-nights/${id}/checkins/${playerId}`, { divisionId }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cards', id] })
       qc.invalidateQueries({ queryKey: ['admin-players'] })
@@ -325,12 +325,12 @@ export default function AdminCheckInPage() {
                           {/* Division selector */}
                           {isIn && (
                             <select
-                              value={p.divisionId ?? ''}
+                              value={checkIn?.divisionId ?? ''}
                               onChange={e => changeDivisionMut.mutate({ playerId: p.id, divisionId: e.target.value || null })}
                               title="Change division"
                               className={clsx(
                                 'shrink-0 h-12 px-1.5 rounded-lg border text-xs font-semibold cursor-pointer transition-colors',
-                                p.divisionId
+                                checkIn?.divisionId
                                   ? 'bg-brand-50 border-brand-300 text-brand-700 dark:bg-brand-800 dark:border-brand-600 dark:text-brand-100'
                                   : 'bg-white border-gray-200 text-gray-400 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-500'
                               )}
@@ -446,12 +446,12 @@ export default function AdminCheckInPage() {
                           {/* Division selector */}
                           {isIn && (
                             <select
-                              value={p.divisionId ?? ''}
+                              value={checkIn?.divisionId ?? ''}
                               onChange={e => changeDivisionMut.mutate({ playerId: p.id, divisionId: e.target.value || null })}
                               title="Change division"
                               className={clsx(
                                 'shrink-0 h-12 px-1.5 rounded-lg border text-xs font-semibold cursor-pointer transition-colors',
-                                p.divisionId
+                                checkIn?.divisionId
                                   ? 'bg-brand-50 border-brand-300 text-brand-700 dark:bg-brand-800 dark:border-brand-600 dark:text-brand-100'
                                   : 'bg-white border-gray-200 text-gray-400 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-500'
                               )}
