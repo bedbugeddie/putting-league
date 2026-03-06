@@ -197,7 +197,9 @@ export default function AdminLeagueNightDetailPage() {
         <div className="flex gap-2 flex-wrap">
           {['SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'].map(s => {
             const isCurrent = night.status === s
-            const blockedComplete = s === 'COMPLETED' && !allCardsComplete && night.status !== 'COMPLETED'
+            // Only block completion when cards exist but aren't all scored.
+            // Nights with no cards (e.g. historical data migration) can always be completed.
+            const blockedComplete = s === 'COMPLETED' && cards.length > 0 && !allCardsComplete && night.status !== 'COMPLETED'
             return (
               <button
                 key={s}
