@@ -189,7 +189,7 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.TRUENAS_HOST }}
-          username: ${{ secrets.TRUENAS_USER }}
+          username: root
           key: ${{ secrets.TRUENAS_SSH_KEY }}
           port: ${{ secrets.TRUENAS_PORT || 22 }}
           script: |
