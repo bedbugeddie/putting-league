@@ -295,7 +295,7 @@ export async function cardRoutes(app: FastifyInstance) {
     const cardPlayer = await prisma.cardPlayer.upsert({
       where: { cardId_playerId: { cardId: id, playerId } },
       create: { cardId: id, playerId },
-      update: {},
+      update: { hasLeft: false },
       include: { player: { include: { user: true, division: true } } },
     })
     return reply.send({ cardPlayer })

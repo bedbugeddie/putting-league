@@ -17,7 +17,7 @@ const navItems = [
 
 export default function AdminLayout() {
   const [menuOpen, setMenuOpen] = useState(false)
-  const menuRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLElement>(null)
   const location = useLocation()
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -27,16 +27,20 @@ export default function AdminLayout() {
   // Close on navigation
   useEffect(() => { setMenuOpen(false) }, [location.pathname])
 
-  // Close desktop dropdown on outside click
+  // Close menu when clicking/tapping outside the nav (covers both desktop dropdown and mobile drawer)
   useEffect(() => {
     if (!menuOpen) return
-    function handleClickOutside(e: MouseEvent) {
+    function handleOutside(e: Event) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setMenuOpen(false)
       }
     }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    document.addEventListener('mousedown', handleOutside)
+    document.addEventListener('touchstart', handleOutside, { passive: true })
+    return () => {
+      document.removeEventListener('mousedown', handleOutside)
+      document.removeEventListener('touchstart', handleOutside)
+    }
   }, [menuOpen])
 
   useEffect(() => {
@@ -54,7 +58,7 @@ export default function AdminLayout() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <nav className="bg-forest-surface text-white shadow-md border-b border-forest-border">
+      <nav ref={menuRef} className="bg-forest-surface text-white shadow-md border-b border-forest-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14">
 
@@ -68,7 +72,7 @@ export default function AdminLayout() {
             </div>
 
             {/* Right: profile button (desktop dropdown + mobile drawer trigger) */}
-            <div className="relative" ref={menuRef}>
+            <div className="relative">
               <button
                 onClick={() => setMenuOpen(o => !o)}
                 className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-forest-mid transition-colors"

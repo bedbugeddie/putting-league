@@ -153,7 +153,8 @@ export default function AdminCheckInPage() {
   const checkedInMap = new Map(checkIns.map(c => [c.playerId, c]))
 
   // Players who are checked in but not assigned to any card yet (latecomers)
-  const assignedPlayerIds = new Set(cards.flatMap(c => c.players.map(cp => cp.playerId)))
+  // Exclude hasLeft:true — those players left early and should still be addable to other cards
+  const assignedPlayerIds = new Set(cards.flatMap(c => c.players.filter(cp => !cp.hasLeft).map(cp => cp.playerId)))
   const uncardedCheckIns = checkIns.filter(ci => !assignedPlayerIds.has(ci.playerId))
 
   const totalHoles = nightData?.leagueNight?.holes?.length ?? 1

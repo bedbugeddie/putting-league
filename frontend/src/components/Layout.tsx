@@ -30,6 +30,7 @@ export default function Layout() {
   const location = useLocation()
   const queryClient = useQueryClient()
   const userMenuRef = useRef<HTMLDivElement>(null)
+  const mobileNavRef = useRef<HTMLElement>(null)
 
   // True when a logged-in user hasn't yet acknowledged the league info
   const needsAck = isAuthenticated && !user?.hasAcknowledgedInfo
@@ -78,6 +79,22 @@ export default function Layout() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [userMenuOpen])
 
+  // Close mobile drawer when tapping outside the nav
+  useEffect(() => {
+    if (!menuOpen) return
+    function handleOutside(e: Event) {
+      if (mobileNavRef.current && !mobileNavRef.current.contains(e.target as Node)) {
+        setMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutside)
+    document.addEventListener('touchstart', handleOutside, { passive: true })
+    return () => {
+      document.removeEventListener('mousedown', handleOutside)
+      document.removeEventListener('touchstart', handleOutside)
+    }
+  }, [menuOpen])
+
   // Check if the user is currently a scorekeeper for an in-progress night
   const { data: activeNightData } = useQuery<{ nightId: string | null }>({
     queryKey: ['my-active-night'],
@@ -108,7 +125,7 @@ export default function Layout() {
   return (
     <div className="site-hero min-h-screen flex flex-col">
       {/* ── Nav ── */}
-      <nav className="bg-brand-700 text-white shadow-md dark:bg-forest-surface dark:shadow-none dark:border-b dark:border-forest-border">
+      <nav ref={mobileNavRef} className="bg-brand-700 text-white shadow-md dark:bg-forest-surface dark:shadow-none dark:border-b dark:border-forest-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14">
             {/* Logo */}
