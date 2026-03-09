@@ -19,6 +19,7 @@ const updateNightSchema = z.object({
   status: z.nativeEnum(LeagueStatus).optional(),
   tieBreakerMode: z.nativeEnum(TieBreakerMode).optional(),
   notes: z.string().max(1000).optional(),
+  cardsPublished: z.boolean().optional(),
 })
 
 const assignScorekeeperSchema = z.object({

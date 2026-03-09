@@ -131,6 +131,16 @@ export default function AdminCheckInPage() {
     onError: (e: any) => toast.error(e.message),
   })
 
+  const publishMut = useMutation({
+    mutationFn: (publish: boolean) =>
+      api.patch(`/admin/league-nights/${id}`, { cardsPublished: publish }),
+    onSuccess: (_data, publish) => {
+      qc.invalidateQueries({ queryKey: ['league-night', id] })
+      toast.success(publish ? '📢 Cards published! Players can now see their cards.' : 'Cards unpublished.')
+    },
+    onError: (e: any) => toast.error(e.message),
+  })
+
   const changeDivisionMut = useMutation({
     mutationFn: ({ playerId, divisionId }: { playerId: string; divisionId: string | null }) =>
       api.patch(`/league-nights/${id}/checkins/${playerId}`, { divisionId }),
@@ -521,7 +531,27 @@ export default function AdminCheckInPage() {
 
         {/* ── Right: Card management ── */}
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold">Cards</h2>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold">Cards</h2>
+            {cards.length > 0 && (
+              <button
+                onClick={() => publishMut.mutate(!nightData?.leagueNight?.cardsPublished)}
+                disabled={publishMut.isPending}
+                className={clsx(
+                  'text-sm px-3 py-1.5 rounded-lg border font-medium transition-colors shrink-0',
+                  nightData?.leagueNight?.cardsPublished
+                    ? 'bg-green-50 border-green-300 text-green-700 hover:bg-green-100 dark:bg-green-900/30 dark:border-green-700 dark:text-green-300'
+                    : 'bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/30 dark:border-amber-700 dark:text-amber-300'
+                )}
+              >
+                {publishMut.isPending
+                  ? '…'
+                  : nightData?.leagueNight?.cardsPublished
+                    ? '✓ Published'
+                    : '📢 Publish Cards'}
+              </button>
+            )}
+          </div>
 
           {/* Auto-generate controls */}
           <div className="card space-y-3">

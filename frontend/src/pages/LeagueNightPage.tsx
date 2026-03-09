@@ -249,9 +249,26 @@ export default function LeagueNightPage() {
         </div>
       )}
 
+      {/* ── Cards being finalized placeholder (non-admin, checked in, cards not published) ── */}
+      {iAmCheckedIn && !isAdmin && !night.cardsPublished && night.status === 'IN_PROGRESS' && (
+        <div className="card text-center py-6">
+          <p className="text-3xl mb-2">🃏</p>
+          <p className="font-semibold text-gray-700 dark:text-gray-200">Cards are being finalized</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Your card assignment will appear here once the admin publishes the cards.
+          </p>
+        </div>
+      )}
+
       {/* ── My Card ── */}
-      {myCard && (
+      {myCard && (isAdmin || night.cardsPublished) && (
         <div className="card">
+          {/* Admin-only unpublished warning */}
+          {isAdmin && !night.cardsPublished && (
+            <div className="mb-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700 dark:bg-amber-900/20 dark:border-amber-700 dark:text-amber-400">
+              ⚠️ Cards not yet published — only admins can see this
+            </div>
+          )}
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold">Your Card — {myCard.name}</h2>
             <span className="text-xs text-gray-500 dark:text-gray-400">Starts at Hole #{myCard.startingHole}</span>

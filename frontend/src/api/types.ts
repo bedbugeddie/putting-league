@@ -82,6 +82,7 @@ export interface LeagueNight {
   status: LeagueStatus
   tieBreakerMode: TieBreakerMode
   notes?: string
+  cardsPublished: boolean
   holes: Hole[]
   rounds: Round[]
   scorekeeperAssignments?: ScorekeeperAssignment[]

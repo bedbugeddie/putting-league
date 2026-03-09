@@ -108,6 +108,7 @@ model LeagueNight {
   status         LeagueStatus   @default(SCHEDULED)
   tieBreakerMode TieBreakerMode @default(SPLIT)
   notes          String?
+  cardsPublished Boolean        @default(false)
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
