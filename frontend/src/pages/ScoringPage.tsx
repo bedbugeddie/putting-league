@@ -393,7 +393,9 @@ export default function ScoringPage({ adminMode = false }: { adminMode?: boolean
     const cards = cardsData.cards ?? []
     const myCard = user?.player?.id ? cards.find(c => c.scorekeeperId === user.player!.id) : null
     const adminCard = isAdmin && cardIdParam ? cards.find(c => c.id === cardIdParam) ?? null : null
-    const cardForEffect = adminCard ?? myCard
+    // In admin mode, only an explicit card selection activates a card — myCard must not
+    // override the "All Cards" view just because the admin happens to be on a card.
+    const cardForEffect = isAdmin ? adminCard : myCard
 
     if (!cardForEffect) {
       // Historical nights: admin viewing a past night with no card records → position to last hole/round
@@ -469,7 +471,9 @@ export default function ScoringPage({ adminMode = false }: { adminMode?: boolean
   const myPlayerId = user?.player?.id
   const myCard = myPlayerId ? cards.find(c => c.scorekeeperId === myPlayerId) : null
   const adminCard = isAdmin && cardIdParam ? cards.find(c => c.id === cardIdParam) ?? null : null
-  const activeCard = adminCard ?? myCard
+  // In admin mode, only an explicit card selection activates a card — myCard must not
+  // override the "All Cards" view just because the admin happens to be on a card.
+  const activeCard = isAdmin ? adminCard : myCard
 
   // Build score map early so it's available for player derivation below
   const existingScores = scoresData?.scores ?? []
