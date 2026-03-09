@@ -34,8 +34,8 @@ function PayoutBadge({ info }: { info: PayoutInfo }) {
     )
   }
   return (
-    <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded px-1.5 py-0.5">
-      💰 ${info.payout}
+    <span className="inline-flex items-center text-base leading-none">
+      💰
     </span>
   )
 }
@@ -97,7 +97,7 @@ function LeaderboardTable({
             <SortableHeader sortKey="score"  currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} className="text-right py-2.5 pr-4 font-bold">Score</SortableHeader>
             <SortableHeader sortKey="short"  currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} className="text-right py-2.5 pr-3 hidden sm:table-cell">Short</SortableHeader>
             <SortableHeader sortKey="long"   currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} className="text-right py-2.5 pr-4 hidden sm:table-cell">Long</SortableHeader>
-            {hasPayouts && <th className="text-right py-2.5 pr-4 hidden sm:table-cell text-green-700 dark:text-green-400">Payout</th>}
+            {hasPayouts && <th className="text-right py-2.5 pr-4 hidden sm:table-cell text-green-700 dark:text-green-400">Prize</th>}
           </tr>
         </thead>
         <tbody>
