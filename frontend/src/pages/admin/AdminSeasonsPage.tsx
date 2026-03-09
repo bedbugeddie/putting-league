@@ -7,6 +7,12 @@ import toast from 'react-hot-toast'
 import Spinner from '../../components/ui/Spinner'
 import { format } from 'date-fns'
 
+/** Parse an ISO date string as a local calendar date (ignores UTC offset). */
+function parseLocalDate(iso: string) {
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
 type EditForm = { name: string; startDate: string; endDate: string; isActive: boolean }
 
 const toDateInput = (iso?: string) => iso ? iso.split('T')[0] : ''
@@ -152,8 +158,8 @@ export default function AdminSeasonsPage() {
                 <div>
                   <p className="font-semibold">{s.name}</p>
                   <p className="text-sm text-gray-500">
-                    {format(new Date(s.startDate), 'MMM d, yyyy')}
-                    {s.endDate && ` – ${format(new Date(s.endDate), 'MMM d, yyyy')}`}
+                    {format(parseLocalDate(s.startDate), 'MMM d, yyyy')}
+                    {s.endDate && ` – ${format(parseLocalDate(s.endDate), 'MMM d, yyyy')}`}
                     {' · '}{s._count?.leagueNights ?? 0} nights
                   </p>
                 </div>

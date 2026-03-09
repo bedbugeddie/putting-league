@@ -5,6 +5,12 @@ import type { Season } from '../api/types'
 import Spinner from '../components/ui/Spinner'
 import { format } from 'date-fns'
 
+/** Parse an ISO date string as a local calendar date (ignores UTC offset). */
+function parseLocalDate(iso: string) {
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
 export default function SeasonsPage() {
   const { data, isLoading } = useQuery<{ seasons: Season[] }>({
     queryKey: ['seasons'],
@@ -24,8 +30,8 @@ export default function SeasonsPage() {
             <div>
               <p className="font-semibold">{s.name}</p>
               <p className="text-sm text-gray-500">
-                Started {format(new Date(s.startDate), 'MMM d, yyyy')}
-                {s.endDate ? ` · Ended ${format(new Date(s.endDate), 'MMM d, yyyy')}` : ''}
+                Started {format(parseLocalDate(s.startDate), 'MMM d, yyyy')}
+                {s.endDate ? ` · Ended ${format(parseLocalDate(s.endDate), 'MMM d, yyyy')}` : ''}
                 {' '}· {s._count?.leagueNights ?? '?'} nights
               </p>
             </div>
