@@ -280,6 +280,28 @@ export async function cardRoutes(app: FastifyInstance) {
     return reply.status(204).send()
   })
 
+  // POST shuffle the throw order for a card (any authenticated player on the card)
+  app.post('/cards/:id/shuffle', { preHandler: requireAuth }, async (req, reply) => {
+    const { id } = req.params as { id: string }
+
+    const card = await prisma.card.findUnique({
+      where: { id },
+      include: { players: true },
+    })
+    if (!card) return reply.status(404).send({ error: 'Card not found' })
+
+    // Verify the requester is on the card (or is admin)
+    if (!req.user!.isAdmin) {
+      const player = await prisma.player.findUnique({ where: { userId: req.user!.userId } })
+      const onCard = player && card.players.some(cp => cp.playerId === player.id)
+      if (!onCard) return reply.status(403).send({ error: 'You are not on this card' })
+    }
+
+    await randomizeCardOrder(id)
+    const updated = await prisma.card.findUnique({ where: { id }, include: cardInclude })
+    return reply.send({ card: updated })
+  })
+
   // DELETE a card
   app.delete('/cards/:id', { preHandler: requireAdmin }, async (req, reply) => {
     const { id } = req.params as { id: string }

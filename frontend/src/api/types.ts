@@ -232,6 +232,7 @@ export interface CardPlayer {
   cardId: string
   playerId: string
   player: Player
+  sortOrder: number
   hasLeft: boolean
 }
 

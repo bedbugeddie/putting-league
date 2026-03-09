@@ -93,6 +93,15 @@ export default function LeagueNightPage() {
     onError: (e: any) => toast.error(e.message),
   })
 
+  const shuffleMut = useMutation({
+    mutationFn: (cardId: string) => api.post(`/cards/${cardId}/shuffle`, {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['cards', id] })
+      toast.success('Throw order shuffled!')
+    },
+    onError: (e: any) => toast.error(e.message),
+  })
+
   if (isLoading) return <div className="flex justify-center py-20"><Spinner className="h-10 w-10" /></div>
 
   const night = data?.leagueNight
@@ -296,9 +305,9 @@ export default function LeagueNightPage() {
             </div>
           )}
 
-          {/* Card players */}
+          {/* Card players — shown in randomized throw order (sortOrder) */}
           <div className="flex flex-wrap gap-2">
-            {myCard.players.map(cp => (
+            {myCard.players.map((cp, idx) => (
               <span
                 key={cp.id}
                 className={clsx(
@@ -310,6 +319,7 @@ export default function LeagueNightPage() {
                       : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
                 )}
               >
+                <span className="text-xs opacity-50 mr-1">{idx + 1}.</span>
                 {cp.player.user.name}
                 {cp.hasLeft
                   ? <span className="ml-1 text-xs no-underline">🚶</span>
@@ -320,6 +330,18 @@ export default function LeagueNightPage() {
               </span>
             ))}
           </div>
+          {/* Shuffle throw order — only available while the night is active */}
+          {(night.status === 'SCHEDULED' || night.status === 'IN_PROGRESS') && (
+            <div className="mt-3 flex justify-end">
+              <button
+                onClick={() => shuffleMut.mutate(myCard.id)}
+                disabled={shuffleMut.isPending}
+                className="btn-secondary text-xs py-1.5 px-3"
+              >
+                {shuffleMut.isPending ? 'Shuffling…' : '🔀 Shuffle Order'}
+              </button>
+            </div>
+          )}
         </div>
       )}
 

@@ -605,7 +605,19 @@ export default function AdminCheckInPage() {
                 </div>
               )}
 
-              {cards.map(card => (
+              {cards.map(card => {
+                // Admin display order: scorekeeper pinned first, rest sorted alphabetically by last name
+                const displayPlayers = [...card.players].sort((a, b) => {
+                  const aIsKeeper = a.playerId === card.scorekeeperId
+                  const bIsKeeper = b.playerId === card.scorekeeperId
+                  if (aIsKeeper !== bIsKeeper) return aIsKeeper ? -1 : 1
+                  const aKey = ((a.player.user.lastName ?? '') || (a.player.user.name.trim().split(/\s+/).at(-1) ?? '')).toLowerCase()
+                    + ',' + ((a.player.user.firstName ?? '') || (a.player.user.name.trim().split(/\s+/)[0] ?? '')).toLowerCase()
+                  const bKey = ((b.player.user.lastName ?? '') || (b.player.user.name.trim().split(/\s+/).at(-1) ?? '')).toLowerCase()
+                    + ',' + ((b.player.user.firstName ?? '') || (b.player.user.name.trim().split(/\s+/)[0] ?? '')).toLowerCase()
+                  return aKey.localeCompare(bKey)
+                })
+                return (
                 <div key={card.id} className="card">
                   <div className="flex items-center justify-between mb-3">
                     <div>
@@ -644,7 +656,7 @@ export default function AdminCheckInPage() {
                           onChange={e => { if (e.target.value) assignScorekeeperMut.mutate({ cardId: card.id, scorekeeperId: e.target.value }) }}
                         >
                           <option value="">Assign scorekeeper…</option>
-                          {card.players.map(cp => (
+                          {displayPlayers.map(cp => (
                             <option key={cp.player.id} value={cp.player.id}>{cp.player.user.name}</option>
                           ))}
                         </select>
@@ -661,7 +673,7 @@ export default function AdminCheckInPage() {
 
                   {/* Players list */}
                   <div className="space-y-1">
-                    {card.players.map(cp => {
+                    {displayPlayers.map(cp => {
                       const checkIn = checkedInMap.get(cp.player.id)
                       return (
                         <div key={cp.id} className={clsx(
@@ -751,7 +763,7 @@ export default function AdminCheckInPage() {
                     })()}
                   </div>
                 </div>
-              ))}
+              )})}
 
             </div>
           )}
