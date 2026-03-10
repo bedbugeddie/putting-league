@@ -641,11 +641,7 @@ export default function AdminCheckInPage() {
                   const aIsKeeper = a.playerId === card.scorekeeperId
                   const bIsKeeper = b.playerId === card.scorekeeperId
                   if (aIsKeeper !== bIsKeeper) return aIsKeeper ? -1 : 1
-                  const aKey = ((a.player.user.lastName ?? '') || (a.player.user.name.trim().split(/\s+/).at(-1) ?? '')).toLowerCase()
-                    + ',' + ((a.player.user.firstName ?? '') || (a.player.user.name.trim().split(/\s+/)[0] ?? '')).toLowerCase()
-                  const bKey = ((b.player.user.lastName ?? '') || (b.player.user.name.trim().split(/\s+/).at(-1) ?? '')).toLowerCase()
-                    + ',' + ((b.player.user.firstName ?? '') || (b.player.user.name.trim().split(/\s+/)[0] ?? '')).toLowerCase()
-                  return aKey.localeCompare(bKey)
+                  return a.player.user.name.localeCompare(b.player.user.name)
                 })
                 return (
                 <div key={card.id} className="card">
