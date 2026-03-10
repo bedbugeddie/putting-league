@@ -538,16 +538,16 @@ export default function AdminCheckInPage() {
                 onClick={() => publishMut.mutate(!nightData?.leagueNight?.cardsPublished)}
                 disabled={publishMut.isPending}
                 className={clsx(
-                  'text-sm px-3 py-1.5 rounded-lg border font-medium transition-colors shrink-0',
+                  'group text-sm px-3 py-1.5 rounded-lg border font-medium transition-colors shrink-0',
                   nightData?.leagueNight?.cardsPublished
-                    ? 'bg-green-50 border-green-300 text-green-700 hover:bg-green-100 dark:bg-green-900/30 dark:border-green-700 dark:text-green-300'
+                    ? 'bg-green-50 border-green-300 text-green-700 hover:bg-red-50 hover:border-red-300 hover:text-red-700 dark:bg-green-900/30 dark:border-green-700 dark:text-green-300 dark:hover:bg-red-900/30 dark:hover:border-red-700 dark:hover:text-red-400'
                     : 'bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/30 dark:border-amber-700 dark:text-amber-300'
                 )}
               >
                 {publishMut.isPending
                   ? '…'
                   : nightData?.leagueNight?.cardsPublished
-                    ? '✓ Published'
+                    ? <><span className="group-hover:hidden">✓ Published</span><span className="hidden group-hover:inline">↩ Unpublish</span></>
                     : '📢 Publish Cards'}
               </button>
             )}
