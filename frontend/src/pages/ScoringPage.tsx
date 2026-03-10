@@ -36,12 +36,13 @@ function RoundSummary({
   holes: Hole[]
   players: Player[]
   scoreMap: Map<ScoreKey, Score>
-  localOverrides: Map<ScoreKey, number>
+  localOverrides: Map<ScoreKey, number | null>
   onContinue: () => void
 }) {
   function getVal(playerId: string, holeId: string, roundId: string, pos: Position): number {
     const key = `${playerId}::${holeId}::${roundId}::${pos}` as ScoreKey
-    return localOverrides.get(key) ?? scoreMap.get(key)?.made ?? 0
+    if (localOverrides.has(key)) return localOverrides.get(key) ?? 0
+    return scoreMap.get(key)?.made ?? 0
   }
 
   const { sortKey, sortDir, toggleSort } = useSortable('score', 'desc')
@@ -172,7 +173,7 @@ function FinishView({
   holes: Hole[]
   rounds: Round[]
   scoreMap: Map<ScoreKey, Score>
-  localOverrides: Map<ScoreKey, number>
+  localOverrides: Map<ScoreKey, number | null>
 }) {
   const { data: hlData } = useQuery<NightHighlights>({
     queryKey: ['highlights', nightId],
@@ -181,7 +182,8 @@ function FinishView({
 
   function getVal(playerId: string, holeId: string, roundId: string, pos: Position): number {
     const key = `${playerId}::${holeId}::${roundId}::${pos}` as ScoreKey
-    return localOverrides.get(key) ?? scoreMap.get(key)?.made ?? 0
+    if (localOverrides.has(key)) return localOverrides.get(key) ?? 0
+    return scoreMap.get(key)?.made ?? 0
   }
 
   const { sortKey: fSortKey, sortDir: fSortDir, toggleSort: fToggleSort } = useSortable('score', 'desc')
@@ -446,7 +448,8 @@ export default function ScoringPage({ adminMode = false }: { adminMode?: boolean
   }, [scoresData, nightData, cardsData])
 
   const [pendingSaves, setPendingSaves] = useState(0)
-  const [localOverrides, setLocalOverrides] = useState<Map<ScoreKey, number>>(new Map())
+  // null means the score was explicitly cleared (toggled off); absence means not yet touched
+  const [localOverrides, setLocalOverrides] = useState<Map<ScoreKey, number | null>>(new Map())
 
   // Track holes the user has navigated away from so we can flag incomplete ones in red
   const [visitedHoles, setVisitedHoles] = useState<Set<number>>(new Set())
@@ -534,12 +537,13 @@ export default function ScoringPage({ adminMode = false }: { adminMode?: boolean
 
   async function handleScoreChange(
     playerId: string, holeId: string, roundId: string,
-    position: Position, made: number
+    position: Position, made: number | null
   ) {
     const key: ScoreKey = `${playerId}::${holeId}::${roundId}::${position}`
     setLocalOverrides(prev => new Map(prev).set(key, made))
     setPendingSaves(n => n + 1)
     try {
+      // made:null deletes the score row on the server; made:number upserts it
       await api.post('/scoring/bulk', { scores: [{ playerId, holeId, roundId, position, made }] })
       queryClient.invalidateQueries({ queryKey: ['scores', id] })
     } catch (err: any) {
@@ -715,8 +719,10 @@ export default function ScoringPage({ adminMode = false }: { adminMode?: boolean
             const holeComplete = currentRound && basePlayers.length > 0 && basePlayers.every(player => {
               const shortKey: ScoreKey = `${player.id}::${h.id}::${currentRound.id}::SHORT`
               const longKey: ScoreKey  = `${player.id}::${h.id}::${currentRound.id}::LONG`
-              return (localOverrides.get(shortKey) ?? scoreMap.get(shortKey)?.made ?? null) !== null &&
-                     (localOverrides.get(longKey)  ?? scoreMap.get(longKey)?.made  ?? null) !== null
+              // Use has() so an explicitly-cleared (null) override is treated as "not scored"
+              const shortVal = localOverrides.has(shortKey) ? localOverrides.get(shortKey) ?? null : scoreMap.get(shortKey)?.made ?? null
+              const longVal  = localOverrides.has(longKey)  ? localOverrides.get(longKey)  ?? null : scoreMap.get(longKey)?.made  ?? null
+              return shortVal !== null && longVal !== null
             })
             const holeIncomplete = !holeComplete && visitedHoles.has(i)
             return (
@@ -780,8 +786,8 @@ export default function ScoringPage({ adminMode = false }: { adminMode?: boolean
             {displayPlayers.map((player, throwPos) => {
               const shortKey: ScoreKey = `${player.id}::${currentHole.id}::${currentRound.id}::SHORT`
               const longKey: ScoreKey  = `${player.id}::${currentHole.id}::${currentRound.id}::LONG`
-              const shortVal = localOverrides.get(shortKey) ?? scoreMap.get(shortKey)?.made ?? null
-              const longVal  = localOverrides.get(longKey)  ?? scoreMap.get(longKey)?.made  ?? null
+              const shortVal = localOverrides.has(shortKey) ? localOverrides.get(shortKey) ?? null : scoreMap.get(shortKey)?.made ?? null
+              const longVal  = localOverrides.has(longKey)  ? localOverrides.get(longKey)  ?? null : scoreMap.get(longKey)?.made  ?? null
 
               return (
                 <div

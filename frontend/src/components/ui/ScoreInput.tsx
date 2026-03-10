@@ -2,12 +2,13 @@ import clsx from 'clsx'
 
 interface ScoreInputProps {
   value: number | null
-  onChange: (v: number) => void
+  onChange: (v: number | null) => void
   disabled?: boolean
 }
 
 /**
- * Compact 0/1/2/3 toggle — each click cycles through values.
+ * Compact 0/1/2/3 toggle — tapping a button selects it.
+ * Tapping the already-selected button clears the score (toggles off).
  * Shows a gold star bonus indicator when value === 3.
  */
 export default function ScoreInput({ value, onChange, disabled }: ScoreInputProps) {
@@ -20,7 +21,7 @@ export default function ScoreInput({ value, onChange, disabled }: ScoreInputProp
           key={v}
           type="button"
           disabled={disabled}
-          onClick={() => onChange(v)}
+          onClick={() => onChange(value === v ? null : v)}
           className={clsx(
             'w-11 h-11 sm:w-9 sm:h-9 rounded-lg text-base sm:text-sm font-bold transition-colors border',
             value === v

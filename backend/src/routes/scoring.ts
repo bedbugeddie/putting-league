@@ -15,8 +15,13 @@ const scoreSchema = z.object({
   made: z.number().int().min(0).max(3),
 })
 
+// Bulk schema allows made:null to signal "delete this score"
+const bulkScoreItemSchema = scoreSchema.extend({
+  made: z.number().int().min(0).max(3).nullable(),
+})
+
 const bulkScoreSchema = z.object({
-  scores: z.array(scoreSchema),
+  scores: z.array(bulkScoreItemSchema),
 })
 
 const puttOffRoundSchema = z.object({
@@ -248,7 +253,20 @@ export async function scoringRoutes(app: FastifyInstance) {
     const enteredBy = req.user!.userId
 
     const results = await Promise.all(
-      body.scores.map(s => upsertScore({ ...s, enteredBy }))
+      body.scores.map(s => {
+        if (s.made === null) {
+          // made:null → delete the score row (undo/clear)
+          return prisma.score.deleteMany({
+            where: {
+              playerId: s.playerId,
+              holeId:   s.holeId,
+              roundId:  s.roundId,
+              position: s.position,
+            },
+          }).then(() => null)
+        }
+        return upsertScore({ ...s, made: s.made, enteredBy })
+      })
     )
 
     // Broadcast updates
