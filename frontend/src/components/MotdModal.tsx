@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
+import remarkBreaks from 'remark-breaks'
 import { api } from '../api/client'
 import type { Motd } from '../api/types'
 
@@ -74,10 +75,28 @@ export default function MotdModal() {
           prose-headings:text-gray-900 dark:prose-headings:text-white
           prose-p:text-gray-700 dark:prose-p:text-gray-200 prose-p:leading-relaxed
           prose-strong:text-gray-900 dark:prose-strong:text-white
-          prose-a:text-brand-600 dark:prose-a:text-brand-400
+          prose-a:text-brand-600 dark:prose-a:text-brand-400 prose-a:underline
           prose-li:text-gray-700 dark:prose-li:text-gray-200
-          prose-hr:border-gray-200 dark:prose-hr:border-forest-border">
-          <ReactMarkdown>{motd.body}</ReactMarkdown>
+          prose-hr:border-gray-200 dark:prose-hr:border-forest-border
+          prose-img:rounded-lg prose-img:max-h-96 prose-img:mx-auto">
+          <ReactMarkdown
+            remarkPlugins={[remarkBreaks]}
+            components={{
+              // Open all links in a new tab
+              a: ({ href, children }) => (
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-brand-600 dark:text-brand-400 underline hover:opacity-80"
+                >
+                  {children}
+                </a>
+              ),
+            }}
+          >
+            {motd.body}
+          </ReactMarkdown>
         </div>
 
         {/* ── Footer ── */}

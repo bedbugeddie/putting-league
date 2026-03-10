@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { format } from 'date-fns'
@@ -43,6 +43,32 @@ function motdToForm(m: Motd): MotdForm {
   }
 }
 
+// ── Image helpers ─────────────────────────────────────────────────────────────
+
+/** Resize a pasted image to max-width px, convert to JPEG, return data URL. */
+function resizeImageToDataUrl(
+  file: File,
+  maxWidth: number,
+  quality: number,
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    const objectUrl = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl)
+      const scale  = Math.min(1, maxWidth / img.width)
+      const canvas = document.createElement('canvas')
+      canvas.width  = Math.round(img.width  * scale)
+      canvas.height = Math.round(img.height * scale)
+      const ctx = canvas.getContext('2d')!
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+      resolve(canvas.toDataURL('image/jpeg', quality))
+    }
+    img.onerror = reject
+    img.src = objectUrl
+  })
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function AdminMotdPage() {
@@ -51,8 +77,23 @@ export default function AdminMotdPage() {
   const [editTarget, setEditTarget] = useState<Motd | null>(null)
   const [creating,   setCreating]   = useState(false)
   const [form, setForm]             = useState<MotdForm>(EMPTY)
+  const [imageProcessing, setImageProcessing] = useState(false)
 
   const showForm = creating || editTarget !== null
+
+  // Ref to the body textarea so we can restore cursor position after image paste
+  const bodyRef = useRef<HTMLTextAreaElement>(null)
+  const pendingCursorRef = useRef<number | null>(null)
+
+  // After form.body changes from image paste, restore the cursor
+  useEffect(() => {
+    if (pendingCursorRef.current !== null && bodyRef.current) {
+      const pos = pendingCursorRef.current
+      bodyRef.current.selectionStart = pos
+      bodyRef.current.selectionEnd   = pos
+      pendingCursorRef.current = null
+    }
+  }, [form.body])
 
   const { data: motds = [], isLoading } = useQuery<Motd[]>({
     queryKey: ['admin-motd'],
@@ -70,9 +111,9 @@ export default function AdminMotdPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-motd'] })
       cancelForm()
-      toast.success('MOTD created')
+      toast.success('MOTW created')
     },
-    onError: () => toast.error('Failed to create MOTD'),
+    onError: () => toast.error('Failed to create MOTW'),
   })
 
   const updateMut = useMutation({
@@ -86,18 +127,18 @@ export default function AdminMotdPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-motd'] })
       cancelForm()
-      toast.success('MOTD updated')
+      toast.success('MOTW updated')
     },
-    onError: () => toast.error('Failed to update MOTD'),
+    onError: () => toast.error('Failed to update MOTW'),
   })
 
   const deleteMut = useMutation({
     mutationFn: (id: string) => api.delete(`/admin/motd/${id}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-motd'] })
-      toast.success('MOTD deleted')
+      toast.success('MOTW deleted')
     },
-    onError: () => toast.error('Failed to delete MOTD'),
+    onError: () => toast.error('Failed to delete MOTW'),
   })
 
   function startCreate() { setCreating(true); setEditTarget(null); setForm(EMPTY) }
@@ -109,10 +150,41 @@ export default function AdminMotdPage() {
       setForm(f => ({ ...f, [k]: e.target.value }))
   }
 
+  async function handleBodyPaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const items = Array.from(e.clipboardData.items)
+    const imageItem = items.find(item => item.type.startsWith('image/'))
+    if (!imageItem) return // no image — let the browser handle normal paste
+
+    e.preventDefault()
+    const file = imageItem.getAsFile()
+    if (!file) return
+
+    setImageProcessing(true)
+    try {
+      // Resize to max 800 px wide, JPEG quality 0.85 — keeps data URLs manageable
+      const dataUrl = await resizeImageToDataUrl(file, 800, 0.85)
+
+      const textarea = e.currentTarget
+      const start = textarea.selectionStart ?? form.body.length
+      const end   = textarea.selectionEnd   ?? start
+
+      const before = form.body.slice(0, start)
+      const after  = form.body.slice(end)
+      const imageMarkdown = `![image](${dataUrl})`
+
+      pendingCursorRef.current = start + imageMarkdown.length
+      setForm(f => ({ ...f, body: before + imageMarkdown + after }))
+    } catch {
+      toast.error('Failed to process pasted image')
+    } finally {
+      setImageProcessing(false)
+    }
+  }
+
   function submit() {
-    if (!form.body.trim())          return toast.error('Message body is required')
-    if (!form.startDate)            return toast.error('Start date is required')
-    if (!form.endDate)              return toast.error('End date is required')
+    if (!form.body.trim())             return toast.error('Message body is required')
+    if (!form.startDate)               return toast.error('Start date is required')
+    if (!form.endDate)                 return toast.error('End date is required')
     if (form.endDate < form.startDate) return toast.error('End date must be after start date')
     if (editTarget) updateMut.mutate({ id: editTarget.id, f: form })
     else            createMut.mutate(form)
@@ -132,7 +204,7 @@ export default function AdminMotdPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <Link to="/admin" className="text-sm text-brand-600 hover:underline">← Dashboard</Link>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Message of the Day</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Message of the Week</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Display announcements to players when they visit the site.{' '}
             <span className="font-medium">Supports Markdown formatting.</span>{' '}
@@ -144,7 +216,7 @@ export default function AdminMotdPage() {
             onClick={startCreate}
             className="shrink-0 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-sm font-medium transition-colors"
           >
-            + New MOTD
+            + New MOTW
           </button>
         )}
       </div>
@@ -153,7 +225,7 @@ export default function AdminMotdPage() {
       {showForm && (
         <div className="bg-white dark:bg-forest-surface rounded-xl border border-gray-200 dark:border-forest-border p-5 space-y-4">
           <h2 className="text-base font-semibold text-gray-900 dark:text-white">
-            {editTarget ? 'Edit MOTD' : 'New MOTD'}
+            {editTarget ? 'Edit MOTW' : 'New MOTW'}
           </h2>
 
           {/* Title */}
@@ -174,15 +246,27 @@ export default function AdminMotdPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Message Body{' '}
-              <span className="font-normal text-gray-400 text-xs">(Markdown supported: **bold**, *italic*, - lists, ## headings)</span>
+              <span className="font-normal text-gray-400 text-xs">
+                (Markdown: **bold**, *italic*, - lists, ## headings, [link text](url) — paste an image to embed it)
+              </span>
             </label>
-            <textarea
-              value={form.body}
-              onChange={field('body')}
-              placeholder="## Heading&#10;**Bold** or *italic* text&#10;- Bullet one&#10;- Bullet two"
-              rows={9}
-              className={inputCls + ' font-mono resize-y'}
-            />
+            <div className="relative">
+              <textarea
+                ref={bodyRef}
+                value={form.body}
+                onChange={field('body')}
+                onPaste={handleBodyPaste}
+                placeholder={"## Heading\n**Bold** or *italic* text\n- Bullet one\n- Bullet two\n[Visit our site](https://example.com)"}
+                rows={9}
+                className={inputCls + ' font-mono resize-y'}
+                disabled={imageProcessing}
+              />
+              {imageProcessing && (
+                <div className="absolute inset-0 bg-white/70 dark:bg-forest-mid/70 flex items-center justify-center rounded-lg">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Processing image…</span>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Date range */}
@@ -201,10 +285,10 @@ export default function AdminMotdPage() {
           <div className="flex items-center gap-3 pt-1">
             <button
               onClick={submit}
-              disabled={isSaving}
+              disabled={isSaving || imageProcessing}
               className="px-5 py-2 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
             >
-              {isSaving ? 'Saving…' : editTarget ? 'Save Changes' : 'Create MOTD'}
+              {isSaving ? 'Saving…' : editTarget ? 'Save Changes' : 'Create MOTW'}
             </button>
             <button
               onClick={cancelForm}
@@ -216,7 +300,7 @@ export default function AdminMotdPage() {
         </div>
       )}
 
-      {/* ── MOTD list ── */}
+      {/* ── MOTW list ── */}
       {isLoading ? (
         <div className="text-center py-10 text-gray-400 dark:text-gray-500">Loading…</div>
       ) : motds.length === 0 ? (
@@ -268,7 +352,7 @@ export default function AdminMotdPage() {
                     </button>
                     <button
                       onClick={() => {
-                        if (window.confirm('Delete this MOTD?')) deleteMut.mutate(motd.id)
+                        if (window.confirm('Delete this MOTW?')) deleteMut.mutate(motd.id)
                       }}
                       className="text-sm text-red-500 dark:text-red-400 hover:underline font-medium"
                     >
