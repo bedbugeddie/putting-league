@@ -159,14 +159,14 @@ export default function AdminMotdPage() {
     const file = imageItem.getAsFile()
     if (!file) return
 
+    // Capture cursor position NOW — e.currentTarget becomes null after any await
+    const start = e.currentTarget.selectionStart ?? form.body.length
+    const end   = e.currentTarget.selectionEnd   ?? start
+
     setImageProcessing(true)
     try {
       // Resize to max 800 px wide, JPEG quality 0.85 — keeps data URLs manageable
       const dataUrl = await resizeImageToDataUrl(file, 800, 0.85)
-
-      const textarea = e.currentTarget
-      const start = textarea.selectionStart ?? form.body.length
-      const end   = textarea.selectionEnd   ?? start
 
       const before = form.body.slice(0, start)
       const after  = form.body.slice(end)
