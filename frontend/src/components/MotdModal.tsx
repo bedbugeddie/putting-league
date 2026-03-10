@@ -81,6 +81,14 @@ export default function MotdModal() {
           prose-img:rounded-lg prose-img:max-h-96 prose-img:mx-auto">
           <ReactMarkdown
             remarkPlugins={[remarkBreaks]}
+            urlTransform={(url) => {
+              // react-markdown v8+ strips data: URLs by default.
+              // Allow data:image/ so pasted images render correctly.
+              if (url.startsWith('data:image/')) return url
+              // Allow safe protocols and relative URLs; block everything else.
+              if (/^(?:https?|mailto|#|\/|\.\.?\/)/i.test(url)) return url
+              return ''
+            }}
             components={{
               // Open all links in a new tab
               a: ({ href, children }) => (

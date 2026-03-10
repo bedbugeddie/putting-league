@@ -336,9 +336,12 @@ export default function AdminMotdPage() {
                       {' → '}
                       {format(new Date(motd.endDate), 'MMM d, yyyy')}
                     </p>
-                    {/* Body preview */}
+                    {/* Body preview — strip embedded image data URLs so they don't flood the preview */}
                     <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">
-                      {motd.body}
+                      {motd.body
+                        .replace(/!\[[^\]]*\]\(data:[^)]+\)/g, '📷')
+                        .replace(/!\[[^\]]*\]\([^)]+\)/g, '📷')
+                        .trim() || <span className="italic text-gray-400">No text content</span>}
                     </p>
                   </div>
 
