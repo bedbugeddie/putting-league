@@ -4,20 +4,21 @@ import { Link } from 'react-router-dom'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 import { api } from '../../api/client'
-import type { Motd } from '../../api/types'
+import type { Motw } from '../../api/types'
+import MotwModal from '../../components/MotwModal'
 
 // ── Status helpers ────────────────────────────────────────────────────────────
 
-type MotdStatus = 'upcoming' | 'active' | 'expired'
+type MotwStatus = 'upcoming' | 'active' | 'expired'
 
-function getStatus(motd: Motd): MotdStatus {
+function getStatus(motw: Motw): MotwStatus {
   const now = new Date()
-  if (new Date(motd.startDate) > now) return 'upcoming'
-  if (new Date(motd.endDate)   < now) return 'expired'
+  if (new Date(motw.startDate) > now) return 'upcoming'
+  if (new Date(motw.endDate)   < now) return 'expired'
   return 'active'
 }
 
-const STATUS_PILL: Record<MotdStatus, { label: string; cls: string }> = {
+const STATUS_PILL: Record<MotwStatus, { label: string; cls: string }> = {
   upcoming: { label: '⏳ Upcoming', cls: 'bg-blue-100  dark:bg-blue-900/30  text-blue-700  dark:text-blue-300'  },
   active:   { label: '✅ Active',   cls: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' },
   expired:  { label: '❌ Expired',  cls: 'bg-gray-100  dark:bg-gray-700     text-gray-500  dark:text-gray-400'  },
@@ -25,16 +26,16 @@ const STATUS_PILL: Record<MotdStatus, { label: string; cls: string }> = {
 
 // ── Form helpers ──────────────────────────────────────────────────────────────
 
-interface MotdForm {
+interface MotwForm {
   title:     string
   body:      string
   startDate: string
   endDate:   string
 }
 
-const EMPTY: MotdForm = { title: '', body: '', startDate: '', endDate: '' }
+const EMPTY: MotwForm = { title: '', body: '', startDate: '', endDate: '' }
 
-function motdToForm(m: Motd): MotdForm {
+function motwToForm(m: Motw): MotwForm {
   return {
     title:     m.title ?? '',
     body:      m.body,
@@ -71,13 +72,14 @@ function resizeImageToDataUrl(
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function AdminMotdPage() {
+export default function AdminMotwPage() {
   const qc = useQueryClient()
 
-  const [editTarget, setEditTarget] = useState<Motd | null>(null)
+  const [editTarget, setEditTarget] = useState<Motw | null>(null)
   const [creating,   setCreating]   = useState(false)
-  const [form, setForm]             = useState<MotdForm>(EMPTY)
+  const [form, setForm]             = useState<MotwForm>(EMPTY)
   const [imageProcessing, setImageProcessing] = useState(false)
+  const [previewMotw, setPreviewMotw] = useState<Motw | null>(null)
 
   const showForm = creating || editTarget !== null
 
@@ -95,21 +97,21 @@ export default function AdminMotdPage() {
     }
   }, [form.body])
 
-  const { data: motds = [], isLoading } = useQuery<Motd[]>({
-    queryKey: ['admin-motd'],
-    queryFn:  () => api.get('/admin/motd'),
+  const { data: motws = [], isLoading } = useQuery<Motw[]>({
+    queryKey: ['admin-motw'],
+    queryFn:  () => api.get('/admin/motw'),
   })
 
   const createMut = useMutation({
-    mutationFn: (f: MotdForm) =>
-      api.post<Motd>('/admin/motd', {
+    mutationFn: (f: MotwForm) =>
+      api.post<Motw>('/admin/motw', {
         title:     f.title.trim() || undefined,
         body:      f.body,
         startDate: new Date(f.startDate).toISOString(),
         endDate:   new Date(f.endDate + 'T23:59:59').toISOString(),
       }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin-motd'] })
+      qc.invalidateQueries({ queryKey: ['admin-motw'] })
       cancelForm()
       toast.success('MOTW created')
     },
@@ -117,15 +119,15 @@ export default function AdminMotdPage() {
   })
 
   const updateMut = useMutation({
-    mutationFn: ({ id, f }: { id: string; f: MotdForm }) =>
-      api.patch<Motd>(`/admin/motd/${id}`, {
+    mutationFn: ({ id, f }: { id: string; f: MotwForm }) =>
+      api.patch<Motw>(`/admin/motw/${id}`, {
         title:     f.title.trim() || null,
         body:      f.body,
         startDate: new Date(f.startDate).toISOString(),
         endDate:   new Date(f.endDate + 'T23:59:59').toISOString(),
       }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin-motd'] })
+      qc.invalidateQueries({ queryKey: ['admin-motw'] })
       cancelForm()
       toast.success('MOTW updated')
     },
@@ -133,19 +135,19 @@ export default function AdminMotdPage() {
   })
 
   const deleteMut = useMutation({
-    mutationFn: (id: string) => api.delete(`/admin/motd/${id}`),
+    mutationFn: (id: string) => api.delete(`/admin/motw/${id}`),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin-motd'] })
+      qc.invalidateQueries({ queryKey: ['admin-motw'] })
       toast.success('MOTW deleted')
     },
     onError: () => toast.error('Failed to delete MOTW'),
   })
 
   function startCreate() { setCreating(true); setEditTarget(null); setForm(EMPTY) }
-  function startEdit(m: Motd) { setEditTarget(m); setCreating(false); setForm(motdToForm(m)) }
+  function startEdit(m: Motw) { setEditTarget(m); setCreating(false); setForm(motwToForm(m)) }
   function cancelForm() { setCreating(false); setEditTarget(null); setForm(EMPTY) }
 
-  function field(k: keyof MotdForm) {
+  function field(k: keyof MotwForm) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
       setForm(f => ({ ...f, [k]: e.target.value }))
   }
@@ -303,7 +305,7 @@ export default function AdminMotdPage() {
       {/* ── MOTW list ── */}
       {isLoading ? (
         <div className="text-center py-10 text-gray-400 dark:text-gray-500">Loading…</div>
-      ) : motds.length === 0 ? (
+      ) : motws.length === 0 ? (
         <div className="text-center py-16 text-gray-400 dark:text-gray-500">
           <p className="text-4xl mb-3">📣</p>
           <p className="font-medium text-base">No messages yet</p>
@@ -311,12 +313,12 @@ export default function AdminMotdPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {motds.map(motd => {
-            const s = getStatus(motd)
+          {motws.map(motw => {
+            const s = getStatus(motw)
             const { label, cls } = STATUS_PILL[s]
             return (
               <div
-                key={motd.id}
+                key={motw.id}
                 className="bg-white dark:bg-forest-surface rounded-xl border border-gray-200 dark:border-forest-border p-4"
               >
                 <div className="flex items-start justify-between gap-4">
@@ -324,21 +326,21 @@ export default function AdminMotdPage() {
                     {/* Status + title */}
                     <div className="flex items-center gap-2 flex-wrap mb-1">
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${cls}`}>{label}</span>
-                      {motd.title && (
+                      {motw.title && (
                         <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                          {motd.title}
+                          {motw.title}
                         </span>
                       )}
                     </div>
                     {/* Date range */}
                     <p className="text-xs text-gray-400 dark:text-gray-500 mb-1.5">
-                      {format(new Date(motd.startDate), 'MMM d, yyyy')}
+                      {format(new Date(motw.startDate), 'MMM d, yyyy')}
                       {' → '}
-                      {format(new Date(motd.endDate), 'MMM d, yyyy')}
+                      {format(new Date(motw.endDate), 'MMM d, yyyy')}
                     </p>
                     {/* Body preview — strip embedded image data URLs so they don't flood the preview */}
                     <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">
-                      {motd.body
+                      {motw.body
                         .replace(/!\[[^\]]*\]\(data:[^)]+\)/g, '📷')
                         .replace(/!\[[^\]]*\]\([^)]+\)/g, '📷')
                         .trim() || <span className="italic text-gray-400">No text content</span>}
@@ -348,14 +350,20 @@ export default function AdminMotdPage() {
                   {/* Actions */}
                   <div className="flex items-center gap-3 shrink-0 pt-0.5">
                     <button
-                      onClick={() => startEdit(motd)}
+                      onClick={() => setPreviewMotw(motw)}
+                      className="text-sm text-gray-500 dark:text-gray-400 hover:underline font-medium"
+                    >
+                      Preview
+                    </button>
+                    <button
+                      onClick={() => startEdit(motw)}
                       className="text-sm text-brand-600 dark:text-brand-400 hover:underline font-medium"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => {
-                        if (window.confirm('Delete this MOTW?')) deleteMut.mutate(motd.id)
+                        if (window.confirm('Delete this MOTW?')) deleteMut.mutate(motw.id)
                       }}
                       className="text-sm text-red-500 dark:text-red-400 hover:underline font-medium"
                     >
@@ -367,6 +375,10 @@ export default function AdminMotdPage() {
             )
           })}
         </div>
+      )}
+
+      {previewMotw && (
+        <MotwModal previewMotw={previewMotw} onClose={() => setPreviewMotw(null)} />
       )}
     </div>
   )

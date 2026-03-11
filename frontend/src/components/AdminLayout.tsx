@@ -11,7 +11,7 @@ const navItems = [
   { to: '/admin/divisions', label: 'Divisions' },
   { to: '/admin/players', label: 'Players' },
   { to: '/admin/financials', label: 'Financials' },
-  { to: '/admin/motd', label: 'MOTW' },
+  { to: '/admin/motw', label: 'MOTW' },
   { to: '/admin/settings', label: 'Settings' },
 ]
 

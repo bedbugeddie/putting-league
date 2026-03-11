@@ -2,43 +2,55 @@ import { useState, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkBreaks from 'remark-breaks'
 import { api } from '../api/client'
-import type { Motd } from '../api/types'
+import type { Motw } from '../api/types'
 
-/** localStorage: remembers which MOTD was permanently dismissed.       */
-const LS_KEY = 'dismissed_motd'
+/** localStorage: remembers which MOTW was permanently dismissed.       */
+const LS_KEY = 'dismissed_motw'
 /** sessionStorage: prevents the modal from re-appearing within a tab.  */
-const SS_KEY = 'motd_shown'
+const SS_KEY = 'motw_shown'
 
-export default function MotdModal() {
-  const [motd, setMotd]       = useState<Motd | null>(null)
-  const [visible, setVisible] = useState(false)
+interface MotwModalProps {
+  /** When provided, shows this MOTW immediately without storage checks (admin preview). */
+  previewMotw?: Motw
+  onClose?: () => void
+}
+
+export default function MotwModal({ previewMotw, onClose }: MotwModalProps = {}) {
+  const [fetchedMotw, setFetchedMotw] = useState<Motw | null>(null)
+  const [visible, setVisible]         = useState(false)
 
   useEffect(() => {
+    if (previewMotw) return // preview mode — skip fetch
+
     // Already shown in this browser session – skip
     if (sessionStorage.getItem(SS_KEY)) return
 
-    api.get<Motd | null>('/motd/active')
+    api.get<Motw | null>('/motw/active')
       .then(data => {
         if (!data) return
         const dismissed = localStorage.getItem(LS_KEY)
-        // Show only if the user hasn't permanently dismissed this exact MOTD
+        // Show only if the user hasn't permanently dismissed this exact MOTW
         if (dismissed !== data.id) {
-          setMotd(data)
+          setFetchedMotw(data)
           setVisible(true)
           sessionStorage.setItem(SS_KEY, '1')
         }
       })
-      .catch(() => { /* silently ignore – MOTD is non-critical */ })
-  }, [])
+      .catch(() => { /* silently ignore – MOTW is non-critical */ })
+  }, [previewMotw])
 
   function dismiss(permanently: boolean) {
-    if (permanently && motd) {
-      localStorage.setItem(LS_KEY, motd.id)
+    if (onClose) { onClose(); return }
+    if (permanently && fetchedMotw) {
+      localStorage.setItem(LS_KEY, fetchedMotw.id)
     }
     setVisible(false)
   }
 
-  if (!visible || !motd) return null
+  const motw      = previewMotw ?? fetchedMotw
+  const isVisible = previewMotw ? true : visible
+
+  if (!isVisible || !motw) return null
 
   return (
     <div
@@ -51,12 +63,9 @@ export default function MotdModal() {
       >
         {/* ── Header ── */}
         <div className="flex items-center justify-between gap-3 px-6 pt-5 pb-4 border-b border-gray-100 dark:border-forest-border shrink-0">
-          <div className="flex items-center gap-2.5">
-            <span className="text-2xl" aria-hidden>📣</span>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">
-              {motd.title ?? 'League Announcement'}
-            </h2>
-          </div>
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">
+            {motw.title ?? 'League Announcement'}
+          </h2>
           <button
             onClick={() => dismiss(false)}
             aria-label="Close"
@@ -103,7 +112,7 @@ export default function MotdModal() {
               ),
             }}
           >
-            {motd.body}
+            {motw.body}
           </ReactMarkdown>
         </div>
 
