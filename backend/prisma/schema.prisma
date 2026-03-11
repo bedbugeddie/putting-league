@@ -41,6 +41,9 @@ model User {
   player                 Player?
   scorekeeperAssignments ScorekeeperAssignment[]
   scoreAuditLogs         ScoreAuditLog[]
+  forumPosts             ForumPost[]
+  forumComments          ForumComment[]
+  forumReactions         ForumReaction[]
 }
 
 model MagicLinkToken {
@@ -119,6 +122,7 @@ model LeagueNight {
   checkIns               CheckIn[]
   cards                  Card[]
   scoreAuditLogs         ScoreAuditLog[]
+  forumPosts             ForumPost[]
 }
 
 enum LeagueStatus {
@@ -296,9 +300,9 @@ model PuttOffParticipant {
   @@unique([puttOffId, playerId, round])
 }
 
-// ─── Message of the Day ───────────────────────────────────────────────────────
+// ─── Message of the Week ──────────────────────────────────────────────────────
 
-model Motd {
+model Motw {
   id        String   @id @default(cuid())
   title     String?
   body      String
@@ -306,4 +310,57 @@ model Motd {
   endDate   DateTime
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@map("Motd")
+}
+
+// ─── Forum ─────────────────────────────────────────────────────────────────────
+
+enum ForumEmoji {
+  LIKE
+  FIRE
+  LAUGH
+}
+
+model ForumPost {
+  id            String       @id @default(cuid())
+  authorId      String
+  author        User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  leagueNightId String?
+  leagueNight   LeagueNight? @relation(fields: [leagueNightId], references: [id], onDelete: Cascade)
+  title         String
+  body          String
+  editedAt      DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  comments  ForumComment[]
+  reactions ForumReaction[]
+}
+
+model ForumComment {
+  id        String    @id @default(cuid())
+  postId    String
+  post      ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  body      String
+  editedAt  DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  reactions ForumReaction[]
+}
+
+// postId XOR commentId — enforced by partial unique indexes added manually in migration SQL
+model ForumReaction {
+  id        String        @id @default(cuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emoji     ForumEmoji
+  postId    String?
+  post      ForumPost?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  commentId String?
+  comment   ForumComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now())
 }

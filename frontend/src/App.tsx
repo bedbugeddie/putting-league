@@ -23,6 +23,10 @@ import SeasonsPage from './pages/SeasonsPage'
 import SeasonPage from './pages/SeasonPage'
 import StatsPage from './pages/StatsPage'
 
+// Forum
+import ForumPage from './pages/ForumPage'
+import ForumPostPage from './pages/ForumPostPage'
+
 // Scoring
 import ScoringPage from './pages/ScoringPage'
 
@@ -38,7 +42,7 @@ import AdminPlayerDetailPage from './pages/admin/AdminPlayerDetailPage'
 import AdminPayoutPage from './pages/admin/AdminPayoutPage'
 import AdminSeasonFinancialsPage from './pages/admin/AdminSeasonFinancialsPage'
 import AdminSettingsPage from './pages/admin/AdminSettingsPage'
-import AdminMotdPage from './pages/admin/AdminMotdPage'
+import AdminMotwPage from './pages/admin/AdminMotwPage'
 
 function HomeRoute() {
   const { isAuthenticated } = useAuth()
@@ -77,6 +81,12 @@ export default function App() {
         <Route path="seasons" element={<SeasonsPage />} />
         <Route path="seasons/:id" element={<SeasonPage />} />
         <Route path="stats" element={<StatsPage />} />
+        <Route path="forum" element={
+          <RequireAuth><ForumPage /></RequireAuth>
+        } />
+        <Route path="forum/:postId" element={
+          <RequireAuth><ForumPostPage /></RequireAuth>
+        } />
 
         {/* Requires login */}
         <Route path="dashboard" element={
@@ -103,7 +113,7 @@ export default function App() {
         <Route path="league-nights/:id/scoring" element={<ScoringPage adminMode={true} />} />
         <Route path="league-nights/:id/payout" element={<AdminPayoutPage />} />
         <Route path="financials" element={<AdminSeasonFinancialsPage />} />
-        <Route path="motd" element={<AdminMotdPage />} />
+        <Route path="motw" element={<AdminMotwPage />} />
         <Route path="settings" element={<AdminSettingsPage />} />
         <Route path="players" element={<AdminPlayersPage />} />
         <Route path="players/:id" element={<AdminPlayerDetailPage />} />

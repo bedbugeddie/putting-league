@@ -7,10 +7,11 @@ import { useTheme, type ThemeMode } from '../store/theme'
 import type { LeagueNight } from '../api/types'
 import PullToRefresh from './PullToRefresh'
 import Avatar from './ui/Avatar'
-import MotdModal from './MotdModal'
+import MotwModal from './MotwModal'
 import PhoneNagModal from './PhoneNagModal'
 
 const navLinks: { to: string; label: string; end?: boolean }[] = [
+  { to: '/forum', label: 'Forum'       },
   { to: '/stats', label: 'League Stats' },
 ]
 
@@ -349,8 +350,8 @@ export default function Layout() {
         )}
       </nav>
 
-      {/* ── MOTD modal (shown once per session if an active message exists) ── */}
-      <MotdModal />
+      {/* ── MOTW modal (shown once per session if an active message exists) ── */}
+      <MotwModal />
 
       {/* ── Phone nag modal (shown every session until user adds a phone number) ── */}
       {!needsAck && <PhoneNagModal />}

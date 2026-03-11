@@ -3,17 +3,170 @@ import { useParams, Link } from 'react-router-dom'
 import { useState } from 'react'
 import { api } from '../api/client'
 import { useAuth } from '../store/auth'
-import type { LeagueNight, CheckIn, Card, Division } from '../api/types'
+import type { LeagueNight, CheckIn, Card, Division, ForumListResponse, ForumPost } from '../api/types'
 import StatusBadge from '../components/ui/StatusBadge'
 import Spinner from '../components/ui/Spinner'
-import { format, isSameDay } from 'date-fns'
+import Avatar from '../components/ui/Avatar'
+import { format, isSameDay, formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
+
+// ── Night Discussion ──────────────────────────────────────────────────────────
+
+const EMOJI_MAP = { LIKE: '👍', FIRE: '🔥', LAUGH: '😂' } as const
+
+function NightDiscussion({ nightId }: { nightId: string }) {
+  const { user } = useAuth()
+  const qc = useQueryClient()
+  const [showForm, setShowForm] = useState(false)
+  const [title, setTitle]       = useState('')
+  const [body, setBody]         = useState('')
+
+  const { data, isLoading } = useQuery<ForumListResponse>({
+    queryKey: ['night-forum-posts', nightId],
+    queryFn:  () => api.get(`/league-nights/${nightId}/forum/posts?limit=50`),
+  })
+
+  const createMut = useMutation({
+    mutationFn: () =>
+      api.post(`/league-nights/${nightId}/forum/posts`, { title, body }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['night-forum-posts', nightId] })
+      setTitle(''); setBody(''); setShowForm(false)
+      toast.success('Post created!')
+    },
+    onError: () => toast.error('Could not create post'),
+  })
+
+  const reactionMut = useMutation({
+    mutationFn: ({ postId, emoji }: { postId: string; emoji: string }) =>
+      api.post(`/forum/posts/${postId}/reactions`, { emoji }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['night-forum-posts', nightId] }),
+    onError: () => toast.error('Could not react'),
+  })
+
+  const posts = data?.posts ?? []
+
+  if (isLoading) return <div className="flex justify-center py-8"><Spinner /></div>
+
+  return (
+    <div className="space-y-4">
+      {/* New post button */}
+      <div className="flex justify-end">
+        <button
+          onClick={() => setShowForm(s => !s)}
+          className="px-4 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium transition-colors"
+        >
+          {showForm ? 'Cancel' : '+ New Post'}
+        </button>
+      </div>
+
+      {/* New post form */}
+      {showForm && (
+        <div className="bg-white dark:bg-forest-surface border border-gray-100 dark:border-forest-border rounded-xl p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Avatar name={user?.name ?? ''} avatarDataUrl={user?.avatarDataUrl} size="sm" />
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{user?.name}</span>
+          </div>
+          <input
+            type="text"
+            placeholder="Title"
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            maxLength={200}
+            className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-forest-border bg-white dark:bg-forest focus:outline-none focus:ring-2 focus:ring-brand-500 text-gray-900 dark:text-white"
+          />
+          <textarea
+            placeholder="What's on your mind about tonight?"
+            value={body}
+            onChange={e => setBody(e.target.value)}
+            rows={3}
+            maxLength={10_000}
+            className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-forest-border bg-white dark:bg-forest focus:outline-none focus:ring-2 focus:ring-brand-500 text-gray-900 dark:text-white resize-none"
+          />
+          <div className="flex justify-end">
+            <button
+              onClick={() => createMut.mutate()}
+              disabled={!title.trim() || !body.trim() || createMut.isPending}
+              className="px-4 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-medium transition-colors"
+            >
+              {createMut.isPending ? 'Posting…' : 'Post'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Post list */}
+      {posts.length === 0 ? (
+        <div className="text-center py-10 text-gray-400 dark:text-gray-500">
+          <p className="text-3xl mb-2">💬</p>
+          <p>No posts yet. Start the conversation!</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {posts.map((post: ForumPost) => (
+            <Link
+              key={post.id}
+              to={`/forum/${post.id}`}
+              className="block bg-white dark:bg-forest-surface border border-gray-100 dark:border-forest-border rounded-xl p-4 hover:shadow-md dark:hover:border-brand-600 transition-all"
+            >
+              <div className="flex items-start gap-3">
+                <Avatar name={post.author.name} avatarDataUrl={post.author.avatarDataUrl} size="sm" />
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-semibold text-gray-900 dark:text-white leading-snug">
+                    {post.title}
+                  </h3>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                    {post.author.name} · {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">
+                    {post.body}
+                  </p>
+                  <div className="flex items-center justify-between mt-2">
+                    {/* Quick reactions (clicking stops link propagation) */}
+                    <div className="flex items-center gap-2">
+                      {(['LIKE', 'FIRE', 'LAUGH'] as const).map(emoji => (
+                        <button
+                          key={emoji}
+                          onClick={e => {
+                            e.preventDefault()
+                            reactionMut.mutate({ postId: post.id, emoji })
+                          }}
+                          className={clsx(
+                            'flex items-center gap-1 text-sm px-2 py-0.5 rounded-full border transition-colors',
+                            post.reactions.viewer[emoji]
+                              ? 'bg-brand-100 dark:bg-brand-900 border-brand-400 dark:border-brand-500 text-brand-700 dark:text-brand-300'
+                              : 'border-gray-200 dark:border-forest-border text-gray-500 dark:text-gray-400 hover:border-gray-400',
+                          )}
+                        >
+                          <span>{EMOJI_MAP[emoji]}</span>
+                          {post.reactions.counts[emoji] > 0 && (
+                            <span>{post.reactions.counts[emoji]}</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">
+                      💬 {post._count?.comments ?? 0}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function LeagueNightPage() {
   const { id } = useParams<{ id: string }>()
   const { isAuthenticated, isAdmin, user } = useAuth()
   const qc = useQueryClient()
+
+  // Tab state
+  const [tab, setTab] = useState<'details' | 'discussion'>('details')
 
   // Division confirmation step state
   const [showDivisionStep, setShowDivisionStep] = useState(false)
@@ -155,6 +308,34 @@ export default function LeagueNightPage() {
         </div>
         <StatusBadge status={night.status} />
       </div>
+
+      {/* ── Tab strip ── */}
+      {isAuthenticated && (
+        <div className="flex border-b border-gray-200 dark:border-forest-border">
+          {(['details', 'discussion'] as const).map(t => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={clsx(
+                'px-4 py-2 text-sm font-medium border-b-2 transition-colors capitalize',
+                tab === t
+                  ? 'border-brand-600 text-brand-700 dark:text-brand-300 dark:border-brand-400'
+                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200',
+              )}
+            >
+              {t === 'details' ? 'Night Details' : '💬 Discussion'}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ── Discussion tab ── */}
+      {isAuthenticated && tab === 'discussion' && id && (
+        <NightDiscussion nightId={id} />
+      )}
+
+      {/* ── Details tab (default / unauthenticated) ── */}
+      {(tab === 'details' || !isAuthenticated) && (<>
 
       {/* ── Self check-in banner ── */}
       {canCheckIn && (
@@ -443,6 +624,8 @@ export default function LeagueNightPage() {
           <p className="text-gray-700 dark:text-gray-300 whitespace-pre-line">{night.notes}</p>
         </div>
       )}
+
+      </>)}
     </div>
   )
 }

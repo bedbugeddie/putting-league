@@ -277,9 +277,9 @@ export interface NightHighlights {
   perfectRounders: { playerName: string; divisionCode: string; roundNumber: number }[]
 }
 
-// ── Message of the Day ────────────────────────────────────────────────────────
+// ── Message of the Week ───────────────────────────────────────────────────────
 
-export interface Motd {
+export interface Motw {
   id: string
   title?: string | null
   body: string
@@ -287,4 +287,54 @@ export interface Motd {
   endDate: string
   createdAt: string
   updatedAt: string
+}
+
+// ── Forum ──────────────────────────────────────────────────────────────────────
+
+export type ForumEmoji = 'LIKE' | 'FIRE' | 'LAUGH'
+
+export interface ReactionSummary {
+  counts: Record<ForumEmoji, number>
+  viewer: Record<ForumEmoji, boolean>
+}
+
+/** Partial User shape returned by forum author selects */
+export interface ForumAuthor {
+  id: string
+  name: string
+  avatarDataUrl?: string | null
+}
+
+export interface ForumComment {
+  id: string
+  postId: string
+  authorId: string
+  author: ForumAuthor
+  body: string
+  editedAt: string | null
+  createdAt: string
+  updatedAt: string
+  reactions: ReactionSummary
+}
+
+export interface ForumPost {
+  id: string
+  authorId: string
+  author: ForumAuthor
+  leagueNightId: string | null
+  title: string
+  body: string
+  editedAt: string | null
+  createdAt: string
+  updatedAt: string
+  _count?: { comments: number }
+  reactions: ReactionSummary
+  comments?: ForumComment[]
+}
+
+export interface ForumListResponse {
+  posts: ForumPost[]
+  total: number
+  page: number
+  pages: number
 }

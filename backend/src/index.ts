@@ -22,8 +22,9 @@ import { checkInRoutes } from './routes/checkins.js'
 import { cardRoutes } from './routes/cards.js'
 import { payoutRoutes } from './routes/admin/payouts.js'
 import { settingsRoutes } from './routes/admin/settings.js'
-import { motdRoutes } from './routes/motd.js'
-import { adminMotdRoutes } from './routes/admin/motd.js'
+import { motwRoutes } from './routes/motw.js'
+import { adminMotwRoutes } from './routes/admin/motw.js'
+import { forumRoutes } from './routes/forum.js'
 
 const app = Fastify({
   logger: {
@@ -68,8 +69,9 @@ async function bootstrap() {
   await app.register(cardRoutes)
   await app.register(payoutRoutes)
   await app.register(settingsRoutes)
-  await app.register(motdRoutes)
-  await app.register(adminMotdRoutes)
+  await app.register(motwRoutes)
+  await app.register(adminMotwRoutes)
+  await app.register(forumRoutes)
   await app.register(wsRoutes)
 
   // ── Health check ─────────────────────────────────────────────────────────────
