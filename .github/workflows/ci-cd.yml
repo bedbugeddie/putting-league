@@ -228,18 +228,20 @@ jobs:
             # POSTGRES_USER=league means no 'postgres' PG role exists, so we
             # temporarily enable trust auth on the local unix socket to run ALTER USER.
             docker compose exec -T postgres sh -c "
-              echo 'local all all trust' | cat - /var/lib/postgresql/data/pg_hba.conf > /tmp/ph
+              { echo 'local all all trust'; grep -v '^local all all trust$' /var/lib/postgresql/data/pg_hba.conf; } > /tmp/ph
               mv /tmp/ph /var/lib/postgresql/data/pg_hba.conf
-              kill -HUP \$(head -1 /var/lib/postgresql/data/postmaster.pid)
             " \
+            && docker compose exec -T postgres psql -U league -d league_db \
+                 -c 'SELECT pg_reload_conf();' \
             && sleep 1 \
-            && docker compose exec -T postgres psql -U league \
+            && docker compose exec -T postgres psql -U league -d league_db \
                  -c "ALTER USER league PASSWORD '${{ secrets.POSTGRES_PASSWORD }}';" \
             && docker compose exec -T postgres sh -c "
-              tail -n +2 /var/lib/postgresql/data/pg_hba.conf > /tmp/ph
+              grep -v '^local all all trust$' /var/lib/postgresql/data/pg_hba.conf > /tmp/ph
               mv /tmp/ph /var/lib/postgresql/data/pg_hba.conf
-              kill -HUP \$(head -1 /var/lib/postgresql/data/postmaster.pid)
             " \
+            && docker compose exec -T postgres psql -U league -d league_db \
+                 -c 'SELECT pg_reload_conf();' \
             && echo "→ Postgres password synced" \
             || echo "⚠️  Postgres password sync skipped (postgres not running?)"
 
