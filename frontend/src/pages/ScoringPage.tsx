@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useParams, useSearchParams } from 'react-router-dom'
+import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
 import { useAuth } from '../store/auth'
@@ -657,6 +657,14 @@ export default function ScoringPage({ adminMode = false }: { adminMode?: boolean
     <div className="space-y-4 pb-6">
       {/* Sticky header */}
       <div className="sticky top-0 z-10 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 bg-gray-50 border-b border-gray-200 dark:bg-gray-900 dark:border-gray-700">
+        {id && (
+          <Link
+            to={`/league-nights/${id}`}
+            className="text-xs text-brand-600 dark:text-brand-400 hover:underline mb-1 inline-block"
+          >
+            ← League Night
+          </Link>
+        )}
         <div className="flex items-center justify-between mb-2">
           <div className="min-w-0 flex-1">
             {isAdmin && cards.length > 1 ? (
