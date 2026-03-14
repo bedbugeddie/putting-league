@@ -393,6 +393,19 @@ export default function Layout() {
                 <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
               </svg>
             </a>
+            {/* DiscGolfScene */}
+            <a
+              href="https://www.discgolfscene.com/league/14358"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="DiscGolfScene"
+              className="text-gray-400 hover:text-orange-500 dark:text-brand-400 dark:hover:text-orange-400 transition-colors"
+            >
+              {/* Circle background with basket silhouette cut out via evenodd */}
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path fillRule="evenodd" d="M0,12 A12,12,0,0,1,24,12 A12,12,0,0,1,0,12 Z M6,3 H18 V6 H6 Z M6.4,6 H7.4 V14 H6.4 Z M8.1,6 H9.1 V14 H8.1 Z M9.8,6 H10.8 V14 H9.8 Z M11.5,6 H12.5 V14 H11.5 Z M13.2,6 H14.2 V14 H13.2 Z M14.9,6 H15.9 V14 H14.9 Z M16.6,6 H17.6 V14 H16.6 Z M5.5,14 L8,18.5 H16 L18.5,14 Z M11,18.5 H13 V21.5 H11 Z" />
+              </svg>
+            </a>
             {/* Beacons */}
             <a
               href="https://beacons.ai/mvpl"
