@@ -9,18 +9,21 @@ export default {
       colors: {
         // Brand scale — driven by CSS variables so the Throw Pink theme can
         // swap the whole palette by changing the vars on <html>.
+        // Uses rgb(var(--brand-X) / <alpha-value>) so opacity modifiers work:
+        //   bg-brand-900/20, text-brand-500/60, border-brand-300/40, etc.
+        // CSS vars must be space-separated RGB channels (not hex) for this to work.
         brand: {
-          50:  'var(--brand-50)',
-          100: 'var(--brand-100)',
-          200: 'var(--brand-200)',
-          300: 'var(--brand-300)',
-          400: 'var(--brand-400)',
-          500: 'var(--brand-500)',
-          600: 'var(--brand-600)',
-          700: 'var(--brand-700)',
-          800: 'var(--brand-800)',
-          900: 'var(--brand-900)',
-          950: 'var(--brand-950)',
+          50:  'rgb(var(--brand-50)  / <alpha-value>)',
+          100: 'rgb(var(--brand-100) / <alpha-value>)',
+          200: 'rgb(var(--brand-200) / <alpha-value>)',
+          300: 'rgb(var(--brand-300) / <alpha-value>)',
+          400: 'rgb(var(--brand-400) / <alpha-value>)',
+          500: 'rgb(var(--brand-500) / <alpha-value>)',
+          600: 'rgb(var(--brand-600) / <alpha-value>)',
+          700: 'rgb(var(--brand-700) / <alpha-value>)',
+          800: 'rgb(var(--brand-800) / <alpha-value>)',
+          900: 'rgb(var(--brand-900) / <alpha-value>)',
+          950: 'rgb(var(--brand-950) / <alpha-value>)',
         },
         // Dark forest palette — used for dark mode backgrounds/surfaces/borders
         forest: {

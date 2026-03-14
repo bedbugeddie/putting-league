@@ -44,6 +44,8 @@ model User {
   forumPosts             ForumPost[]
   forumComments          ForumComment[]
   forumReactions         ForumReaction[]
+  notificationPreference NotificationPreference?
+  pendingDigestItems     PendingDigestItem[]
 }
 
 model MagicLinkToken {
@@ -312,6 +314,43 @@ model Motw {
   updatedAt DateTime @updatedAt
 
   @@map("Motd")
+}
+
+// ─── Notification Preferences ─────────────────────────────────────────────────
+
+enum ForumNotifyMode {
+  ALL        // all forum activity (posts, comments, reactions by anyone)
+  OWN_POSTS  // activity on posts/comments the user authored
+  ENGAGED    // activity on posts the user commented on or reacted to
+  NONE       // no forum email notifications
+}
+
+enum DigestMode {
+  IMMEDIATE  // send each notification as it happens
+  DAILY      // batch into a once-per-day digest
+}
+
+model NotificationPreference {
+  id               String          @id @default(cuid())
+  userId           String          @unique
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  forumMode        ForumNotifyMode @default(OWN_POSTS)
+  digestMode       DigestMode      @default(IMMEDIATE)
+  lastDigestSentAt DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+}
+
+model PendingDigestItem {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventType        String
+  postId           String
+  postTitle        String
+  actorName        String
+  eventDescription String
+  createdAt        DateTime @default(now())
 }
 
 // ─── Forum ─────────────────────────────────────────────────────────────────────

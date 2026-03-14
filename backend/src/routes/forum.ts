@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
 import { requireAuth } from '../middleware/auth.js'
 import type { ForumReaction } from '@prisma/client'
+import { notifyForumEvent } from '../lib/forumNotifications.js'
 
 // ── Zod schemas ───────────────────────────────────────────────────────────────
 
@@ -112,6 +113,15 @@ export async function forumRoutes(app: FastifyInstance) {
       include: postListInclude,
     })
     const viewerId = req.user!.userId
+
+    notifyForumEvent({
+      type: 'new_post',
+      actorId: post.authorId,
+      postId: post.id,
+      postTitle: post.title,
+      postAuthorId: post.authorId,
+    }).catch(console.error)
+
     return reply.status(201).send({
       post: { ...post, reactions: buildReactionSummary(post.reactions, viewerId) },
     })
@@ -189,6 +199,18 @@ export async function forumRoutes(app: FastifyInstance) {
       await prisma.forumReaction.delete({ where: { id: existing.id } })
     } else {
       await prisma.forumReaction.create({ data: { userId, emoji, postId } })
+
+      // Notify on add only (not on remove)
+      const post = await prisma.forumPost.findUnique({ where: { id: postId }, select: { title: true, authorId: true } })
+      if (post) {
+        notifyForumEvent({
+          type: 'new_reaction_on_post',
+          actorId: userId,
+          postId,
+          postTitle: post.title,
+          postAuthorId: post.authorId,
+        }).catch(console.error)
+      }
     }
 
     // Return updated reactions for the post
@@ -241,6 +263,15 @@ export async function forumRoutes(app: FastifyInstance) {
       include: postListInclude,
     })
     const viewerId = req.user!.userId
+
+    notifyForumEvent({
+      type: 'new_post',
+      actorId: post.authorId,
+      postId: post.id,
+      postTitle: post.title,
+      postAuthorId: post.authorId,
+    }).catch(console.error)
+
     return reply.status(201).send({
       post: { ...post, reactions: buildReactionSummary(post.reactions, viewerId) },
     })
@@ -261,6 +292,17 @@ export async function forumRoutes(app: FastifyInstance) {
       include: { author: authorInclude, reactions: true },
     })
     const viewerId = req.user!.userId
+
+    notifyForumEvent({
+      type: 'new_comment',
+      actorId: req.user!.userId,
+      postId: post.id,
+      postTitle: post.title,
+      postAuthorId: post.authorId,
+      commentId: comment.id,
+      commentAuthorId: comment.authorId,
+    }).catch(console.error)
+
     return reply.status(201).send({
       comment: { ...comment, reactions: buildReactionSummary(comment.reactions, viewerId) },
     })
@@ -316,6 +358,23 @@ export async function forumRoutes(app: FastifyInstance) {
       await prisma.forumReaction.delete({ where: { id: existing.id } })
     } else {
       await prisma.forumReaction.create({ data: { userId, emoji, commentId } })
+
+      // Notify on add only (not on remove)
+      const comment = await prisma.forumComment.findUnique({
+        where: { id: commentId },
+        include: { post: { select: { id: true, title: true, authorId: true } } },
+      })
+      if (comment) {
+        notifyForumEvent({
+          type: 'new_reaction_on_comment',
+          actorId: userId,
+          postId: comment.post.id,
+          postTitle: comment.post.title,
+          postAuthorId: comment.post.authorId,
+          commentId: comment.id,
+          commentAuthorId: comment.authorId,
+        }).catch(console.error)
+      }
     }
 
     const reactions = await prisma.forumReaction.findMany({ where: { commentId } })

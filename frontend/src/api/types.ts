@@ -338,3 +338,13 @@ export interface ForumListResponse {
   page: number
   pages: number
 }
+
+// ── Notification Preferences ───────────────────────────────────────────────────
+
+export type ForumNotifyMode = 'ALL' | 'OWN_POSTS' | 'ENGAGED' | 'NONE'
+export type DigestMode = 'IMMEDIATE' | 'DAILY'
+
+export interface NotificationPreferences {
+  forumMode:  ForumNotifyMode
+  digestMode: DigestMode
+}

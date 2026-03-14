@@ -4,34 +4,39 @@
 
 /* ── Brand colour tokens ──────────────────────────────────────────────────────
  * Default (emerald/green) palette. Overridden per-theme below.
+ *
+ * Values are stored as space-separated RGB channels (not hex) so Tailwind's
+ * opacity modifier syntax works correctly: bg-brand-900/20, text-brand-500/60,
+ * etc. Tailwind generates rgb(var(--brand-X) / alpha) which requires this format.
+ * NEVER switch back to hex here — that silently breaks all /opacity modifiers.
  * ─────────────────────────────────────────────────────────────────────────── */
 :root {
-  --brand-50:  #ecfdf5;
-  --brand-100: #d1fae5;
-  --brand-200: #a7f3d0;
-  --brand-300: #6ee7b7;
-  --brand-400: #34d399;
-  --brand-500: #10b981;
-  --brand-600: #059669;
-  --brand-700: #047857;
-  --brand-800: #065f46;
-  --brand-900: #064e3b;
-  --brand-950: #022c22;
+  --brand-50:  236 253 245;  /* #ecfdf5 */
+  --brand-100: 209 250 229;  /* #d1fae5 */
+  --brand-200: 167 243 208;  /* #a7f3d0 */
+  --brand-300: 110 231 183;  /* #6ee7b7 */
+  --brand-400:  52 211 153;  /* #34d399 */
+  --brand-500:  16 185 129;  /* #10b981 */
+  --brand-600:   5 150 105;  /* #059669 */
+  --brand-700:   4 120  87;  /* #047857 */
+  --brand-800:   6  95  70;  /* #065f46 */
+  --brand-900:   6  78  59;  /* #064e3b */
+  --brand-950:   2  44  34;  /* #022c22 */
 }
 
 /* Throw Pink theme — swaps brand palette to Throw Pink's signature magenta. */
 html.throw-pink {
-  --brand-50:  #fdf2f8;
-  --brand-100: #fce7f3;
-  --brand-200: #fbcfe8;
-  --brand-300: #f9a8d4;
-  --brand-400: #f472b6;
-  --brand-500: #ec4899;
-  --brand-600: #D91A5D;  /* Throw Pink primary */
-  --brand-700: #be185d;
-  --brand-800: #9d174d;
-  --brand-900: #831843;
-  --brand-950: #500724;
+  --brand-50:  253 242 248;  /* #fdf2f8 */
+  --brand-100: 252 231 243;  /* #fce7f3 */
+  --brand-200: 251 207 232;  /* #fbcfe8 */
+  --brand-300: 249 168 212;  /* #f9a8d4 */
+  --brand-400: 244 114 182;  /* #f472b6 */
+  --brand-500: 236  72 153;  /* #ec4899 */
+  --brand-600: 217  26  93;  /* #D91A5D — Throw Pink primary */
+  --brand-700: 190  24  93;  /* #be185d */
+  --brand-800: 157  23  77;  /* #9d174d */
+  --brand-900: 131  24  67;  /* #831843 */
+  --brand-950:  80   7  36;  /* #500724 */
 }
 
 @layer base {

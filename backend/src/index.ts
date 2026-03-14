@@ -25,6 +25,8 @@ import { settingsRoutes } from './routes/admin/settings.js'
 import { motwRoutes } from './routes/motw.js'
 import { adminMotwRoutes } from './routes/admin/motw.js'
 import { forumRoutes } from './routes/forum.js'
+import { notificationRoutes } from './routes/notifications.js'
+import { sendPendingDigests } from './lib/forumNotifications.js'
 
 const app = Fastify({
   logger: {
@@ -72,14 +74,28 @@ async function bootstrap() {
   await app.register(motwRoutes)
   await app.register(adminMotwRoutes)
   await app.register(forumRoutes)
+  await app.register(notificationRoutes)
   await app.register(wsRoutes)
 
   // ── Health check ─────────────────────────────────────────────────────────────
   app.get('/health', async () => ({ status: 'ok', ts: new Date().toISOString() }))
 
+  // ── Daily digest scheduler ────────────────────────────────────────────────────
+  // Check once per hour; sends to users whose last digest was >20h ago
+  const digestInterval = setInterval(async () => {
+    try {
+      await sendPendingDigests()
+    } catch (err) {
+      app.log.error({ err }, 'Digest scheduler error')
+    }
+  }, 60 * 60 * 1000)
+  // Run once at startup too, in case any digests are due
+  sendPendingDigests().catch(err => app.log.error({ err }, 'Startup digest error'))
+
   // ── Graceful shutdown ─────────────────────────────────────────────────────────
   const shutdown = async (signal: string) => {
     app.log.info(`Received ${signal}, shutting down…`)
+    clearInterval(digestInterval)
     await app.close()
     await prisma.$disconnect()
     process.exit(0)

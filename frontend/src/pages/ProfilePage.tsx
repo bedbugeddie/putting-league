@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
 import { useAuth } from '../store/auth'
 import { authStore } from '../store/auth'
-import type { PlayerStats, NightHistory } from '../api/types'
+import type { PlayerStats, NightHistory, NotificationPreferences, ForumNotifyMode, DigestMode } from '../api/types'
 import Spinner from '../components/ui/Spinner'
 import Avatar from '../components/ui/Avatar'
 import toast from 'react-hot-toast'
@@ -394,6 +394,159 @@ function PasswordForm() {
   )
 }
 
+// ── Notification preferences form ─────────────────────────────────────────────
+
+const FORUM_MODE_OPTIONS: { value: ForumNotifyMode; label: string; description: string }[] = [
+  {
+    value: 'ALL',
+    label: 'All forum activity',
+    description: 'Every new post, comment, and reaction from anyone.',
+  },
+  {
+    value: 'OWN_POSTS',
+    label: 'Activity on my posts',
+    description: 'Comments and reactions on posts or comments you authored.',
+  },
+  {
+    value: 'ENGAGED',
+    label: 'Threads I joined',
+    description: 'Activity on posts you commented on or reacted to.',
+  },
+  {
+    value: 'NONE',
+    label: 'No notifications',
+    description: 'Never send forum emails.',
+  },
+]
+
+function NotificationPreferencesForm() {
+  const queryClient = useQueryClient()
+
+  const { data, isLoading } = useQuery<{ preferences: NotificationPreferences }>({
+    queryKey: ['notification-preferences'],
+    queryFn: () => api.get('/notifications/preferences'),
+  })
+
+  const [forumMode,  setForumMode]  = useState<ForumNotifyMode>('OWN_POSTS')
+  const [digestMode, setDigestMode] = useState<DigestMode>('IMMEDIATE')
+
+  // Sync state once data loads
+  useEffect(() => {
+    if (data?.preferences) {
+      setForumMode(data.preferences.forumMode)
+      setDigestMode(data.preferences.digestMode)
+    }
+  }, [data])
+
+  const mutation = useMutation({
+    mutationFn: (prefs: NotificationPreferences) =>
+      api.put('/notifications/preferences', prefs),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notification-preferences'] })
+      toast.success('Notification preferences saved!')
+    },
+    onError: (err: any) => {
+      toast.error(err.message ?? 'Failed to save preferences')
+    },
+  })
+
+  const dirty =
+    forumMode  !== (data?.preferences?.forumMode  ?? 'OWN_POSTS') ||
+    digestMode !== (data?.preferences?.digestMode ?? 'IMMEDIATE')
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!dirty) return
+    mutation.mutate({ forumMode, digestMode })
+  }
+
+  if (isLoading) return null
+
+  return (
+    <div className="card">
+      <h2 className="text-lg font-semibold mb-1">Email Notifications</h2>
+      <p className="text-sm text-gray-500 mb-4">
+        Choose when you receive email alerts for forum activity.
+      </p>
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div>
+          <p className="label mb-2">Notify me about</p>
+          <div className="space-y-2">
+            {FORUM_MODE_OPTIONS.map(opt => (
+              <label
+                key={opt.value}
+                className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                  forumMode === opt.value
+                    ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="forumMode"
+                  value={opt.value}
+                  checked={forumMode === opt.value}
+                  onChange={() => setForumMode(opt.value)}
+                  className="mt-0.5 accent-brand-600"
+                />
+                <div>
+                  <p className="text-sm font-medium">{opt.label}</p>
+                  <p className="text-xs text-gray-500">{opt.description}</p>
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {forumMode !== 'NONE' && (
+          <div>
+            <p className="label mb-2">Delivery</p>
+            <div className="flex gap-3">
+              {(['IMMEDIATE', 'DAILY'] as DigestMode[]).map(mode => (
+                <label
+                  key={mode}
+                  className={`flex-1 flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-colors ${
+                    digestMode === mode
+                      ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="digestMode"
+                    value={mode}
+                    checked={digestMode === mode}
+                    onChange={() => setDigestMode(mode)}
+                    className="accent-brand-600"
+                  />
+                  <div>
+                    <p className="text-sm font-medium">
+                      {mode === 'IMMEDIATE' ? 'Immediate' : 'Daily digest'}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {mode === 'IMMEDIATE'
+                        ? 'One email per event as it happens'
+                        : 'One summary email per day'}
+                    </p>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={mutation.isPending || !dirty}
+          className="btn-primary disabled:opacity-50"
+        >
+          {mutation.isPending ? 'Saving…' : 'Save Preferences'}
+        </button>
+      </form>
+    </div>
+  )
+}
+
 // ── Stats ─────────────────────────────────────────────────────────────────────
 
 function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
@@ -432,6 +585,7 @@ export default function ProfilePage() {
       <AccountForm />
       <PlayerProfileForm />
       <PasswordForm />
+      <NotificationPreferencesForm />
 
       {/* Stats */}
       {playerId && (
