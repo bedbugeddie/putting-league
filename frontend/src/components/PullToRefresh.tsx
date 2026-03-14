@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react'
 
-const THRESHOLD = 72   // px of pull required to trigger a refresh
-const MAX_PULL  = 96   // max visual travel (adds resistance feel)
+const THRESHOLD = 64   // px of pull required to trigger a refresh
+const MAX_PULL  = 80   // max visual travel (adds resistance feel)
 
 interface Props {
   onRefresh: () => Promise<void>
@@ -55,7 +55,7 @@ export default function PullToRefresh({ onRefresh, children }: Props) {
         return
       }
       // Apply resistance (√ feel): slow pull as it approaches max
-      const clamped = Math.min(delta * 0.45, MAX_PULL)
+      const clamped = Math.min(delta * 0.55, MAX_PULL)
       pullYRef.current = clamped
       setPullY(clamped)
       // Prevent the browser's native scroll/overscroll once we're pulling
@@ -95,6 +95,9 @@ export default function PullToRefresh({ onRefresh, children }: Props) {
   // When pull snaps back (pullY → 0) or refresh completes, we want a smooth fade.
   const noTransition = pullY > 0 && !refreshing
 
+  // How far the content shifts down — same as pullY so indicator and content move together
+  const contentTranslateY = refreshing ? 48 : pullY
+
   return (
     <>
       {/* Pull indicator — fixed just below the nav bar */}
@@ -131,7 +134,16 @@ export default function PullToRefresh({ onRefresh, children }: Props) {
         </div>
       </div>
 
-      {children}
+      {/* Content shifts down with the pull so the gesture has tactile feedback */}
+      <div
+        style={{
+          transform: `translateY(${contentTranslateY}px)`,
+          transition: noTransition ? 'none' : 'transform 0.25s ease-out',
+          willChange: 'transform',
+        }}
+      >
+        {children}
+      </div>
     </>
   )
 }
