@@ -411,9 +411,11 @@ export default function Layout() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Merch Store"
-              className="text-gray-400 hover:text-brand-600 dark:text-brand-400 dark:hover:text-brand-300 transition-colors text-xs font-semibold tracking-wide"
+              className="text-gray-400 hover:text-brand-600 dark:text-brand-400 dark:hover:text-brand-300 transition-colors"
             >
-              Merch
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M2 3h20l-2 9H4L2 3zm0 0L1 0H0v0h2l.001.031L2 3zM4 14h16v2H4v-2zm2 4a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm12 0a2 2 0 1 1 0 4 2 2 0 0 1 0-4z"/>
+              </svg>
             </a>
           </div>
         </div>
