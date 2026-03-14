@@ -9,29 +9,28 @@ import Spinner from '../components/ui/Spinner'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
+interface BonusLeader {
+  playerId: string
+  playerName: string
+  divisionCode: string
+  count: number
+}
+
+interface NightScore {
+  playerId: string
+  playerName: string
+  divisionCode: string
+  score: number
+  date: string
+}
+
 interface Records {
-  topBonusLeaders: {
-    playerId: string
-    playerName: string
-    divisionCode: string
-    count: number
-  }[]
+  topBonusLeaders: BonusLeader[]
+  topBonusLeadersByDivision: Record<string, BonusLeader[]>
   highestSingleNight: number
   highestByDivision: { divisionCode: string; score: number }[]
-  topNightScores: {
-    playerId: string
-    playerName: string
-    divisionCode: string
-    score: number
-    date: string
-  }[]
-  topNightScoresByDivision: Record<string, {
-    playerId: string
-    playerName: string
-    divisionCode: string
-    score: number
-    date: string
-  }[]>
+  topNightScores: NightScore[]
+  topNightScoresByDivision: Record<string, NightScore[]>
 }
 
 interface NightAveragesData {
@@ -93,9 +92,11 @@ export default function StatsPage() {
 
   // ── Filtered data ──────────────────────────────────────────────────────────
 
-  const filteredBonusLeaders = (records?.topBonusLeaders ?? [])
-    .filter(p => !divFilter || p.divisionCode === divFilter)
-    .slice(0, 5)
+  // When a division is selected use the pre-computed per-division top-5 so
+  // divisions outside the global top-5 still have data to show.
+  const filteredBonusLeaders = divFilter
+    ? (records?.topBonusLeadersByDivision?.[divFilter] ?? [])
+    : (records?.topBonusLeaders ?? []).slice(0, 5)
 
   // When a division is selected, use the pre-computed per-division top-5 so
   // divisions with scores outside the overall top-5 still have data to show.
@@ -202,14 +203,14 @@ export default function StatsPage() {
         {/* Highest Single Night */}
         <div className="card">
           <h2 className="text-lg font-semibold mb-3">⚡ Highest Single Night</h2>
-          {!records?.topNightScores?.[0] ? (
+          {!filteredTopScores[0] ? (
             <p className="text-gray-400">No data yet</p>
           ) : (
             <>
-              <p className="text-5xl font-bold text-brand-700">{records.topNightScores[0].score}</p>
-              <p className="text-base font-medium mt-2">{records.topNightScores[0].playerName}</p>
+              <p className="text-5xl font-bold text-brand-700">{filteredTopScores[0].score}</p>
+              <p className="text-base font-medium mt-2">{filteredTopScores[0].playerName}</p>
               <p className="text-sm text-gray-500">
-                {records.topNightScores[0].divisionCode} · {format(new Date(records.topNightScores[0].date), 'MMM d, yyyy')}
+                {filteredTopScores[0].divisionCode} · {format(new Date(filteredTopScores[0].date), 'MMM d, yyyy')}
               </p>
             </>
           )}

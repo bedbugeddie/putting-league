@@ -99,13 +99,13 @@ export async function getLeagueRecords(seasonId?: string) {
     ? { leagueNight: { seasonId } }
     : {}
 
-  // Most 3-for-3 bonuses
+  // Most 3-for-3 bonuses — fetch enough to build per-division top-5
   const topBonus = await prisma.score.groupBy({
     by: ['playerId'],
     where: { bonus: true, hole: nightFilter },
     _count: { id: true },
     orderBy: { _count: { id: 'desc' } },
-    take: 20,
+    take: 100,
   })
 
   // Enrich bonus leaders with player names and division
@@ -214,8 +214,22 @@ export async function getLeagueRecords(seasonId?: string) {
     }
   }
 
+  // Top 5 bonus leaders per division
+  const topBonusLeadersByDivision: Record<string, typeof topBonusLeaders> = {}
+  const perDivBonusCount = new Map<string, number>()
+  for (const b of topBonusLeaders) {
+    if (!b.divisionCode) continue
+    const count = perDivBonusCount.get(b.divisionCode) ?? 0
+    if (count < 5) {
+      if (!topBonusLeadersByDivision[b.divisionCode]) topBonusLeadersByDivision[b.divisionCode] = []
+      topBonusLeadersByDivision[b.divisionCode].push(b)
+      perDivBonusCount.set(b.divisionCode, count + 1)
+    }
+  }
+
   return {
     topBonusLeaders,
+    topBonusLeadersByDivision,
     highestSingleNight,
     highestByDivision,
     topNightScores,
