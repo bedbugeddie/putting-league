@@ -156,7 +156,7 @@ html.throw-pink {
 /* Scrim is baked into the gradient layer so no extra DOM element is needed.
    Desktop: anchor right → crops from the left, basket stays visible.       */
 .site-hero {
-  background-image: linear-gradient(rgba(0,0,0,0.30), rgba(0,0,0,0.30)), url('/hero-bg.jpg');
+  background-image: linear-gradient(rgba(0,0,0,0.30), rgba(0,0,0,0.30)), url('./assets/hero-bg.jpg');
   background-size: cover;
   background-position: right center;
   background-repeat: no-repeat;
@@ -164,26 +164,26 @@ html.throw-pink {
 /* Mobile: heavier scrim + re-center on the basket. */
 @media (max-width: 639px) {
   .site-hero {
-    background-image: linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url('/hero-bg.jpg');
+    background-image: linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url('./assets/hero-bg.jpg');
     background-position: 65% 45%;
   }
 }
 /* Dark mode: deepen the scrim. */
 .dark .site-hero {
-  background-image: linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url('/hero-bg.jpg');
+  background-image: linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url('./assets/hero-bg.jpg');
 }
 @media (max-width: 639px) {
   .dark .site-hero {
-    background-image: linear-gradient(rgba(0,0,0,0.65), rgba(0,0,0,0.65)), url('/hero-bg.jpg');
+    background-image: linear-gradient(rgba(0,0,0,0.65), rgba(0,0,0,0.65)), url('./assets/hero-bg.jpg');
   }
 }
 /* Throw Pink: warm rose scrim to tint the hero photo. */
 .throw-pink .site-hero {
-  background-image: linear-gradient(rgba(217,26,93,0.12), rgba(217,26,93,0.12)), url('/hero-bg.jpg');
+  background-image: linear-gradient(rgba(217,26,93,0.12), rgba(217,26,93,0.12)), url('./assets/hero-bg.jpg');
 }
 @media (max-width: 639px) {
   .throw-pink .site-hero {
-    background-image: linear-gradient(rgba(217,26,93,0.20), rgba(217,26,93,0.20)), url('/hero-bg.jpg');
+    background-image: linear-gradient(rgba(217,26,93,0.20), rgba(217,26,93,0.20)), url('./assets/hero-bg.jpg');
     background-position: 65% 45%;
   }
 }
