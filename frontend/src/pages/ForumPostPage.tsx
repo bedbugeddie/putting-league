@@ -82,7 +82,7 @@ function CommentItem({ comment, postId }: { comment: ForumComment; postId: strin
   })
 
   return (
-    <div className="flex gap-3">
+    <div className="bg-white dark:bg-forest-surface border border-gray-100 dark:border-forest-border rounded-xl p-4 flex gap-3">
       <Avatar name={comment.author.name} avatarDataUrl={comment.author.avatarDataUrl} size="sm" />
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2">
@@ -324,7 +324,7 @@ export default function ForumPostPage() {
       </div>
 
       {/* Comments */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
           {post.comments?.length ?? 0} {post.comments?.length === 1 ? 'comment' : 'comments'}
         </h2>
@@ -334,7 +334,7 @@ export default function ForumPostPage() {
         ))}
 
         {/* New comment */}
-        <div className="flex gap-3 pt-2 border-t border-gray-100 dark:border-forest-border">
+        <div className="bg-white dark:bg-forest-surface border border-gray-100 dark:border-forest-border rounded-xl p-4 flex gap-3">
           <Avatar name={user?.name ?? ''} avatarDataUrl={user?.avatarDataUrl} size="sm" />
           <div className="flex-1 space-y-2">
             <textarea
