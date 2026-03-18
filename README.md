@@ -1,6 +1,6 @@
-# 🥏 Mini Putt Putting League
+# Mini Putt Putting League
 
-A full-stack web application for managing a disc golf putting league. Supports arbitrary divisions, holes, rounds, and seasons with real-time scoring, a payout calculator, and a full admin panel.
+A full-stack web application for managing a disc golf putting league. Supports arbitrary divisions, holes, rounds, and seasons with real-time scoring, a payout calculator, a player forum, and a full admin panel.
 
 Live at **[mvpl.golf](https://mvpl.golf)**
 
@@ -31,25 +31,34 @@ Live at **[mvpl.golf](https://mvpl.golf)**
 - **Player dashboard** — personal score history and stats across seasons
 - **Profile page** — update display name, avatar, PDGA number, and division
 - **Season standings** — historical leaderboards per season
-- **Stats page** — league-wide analytics and personal records
+- **Stats page** — league-wide analytics and personal records, filterable by division
 - **Division selection** — self-service enrollment on first sign-in
+- **Forum** — per-league-night discussion threads with notification preferences and email digest
+- **Moment of the Week (MOTW)** — image + caption posts with paste-to-upload support
+- **League Info page** — static info page for new and prospective players
+- **Pull-to-refresh** — mobile-friendly data refresh on key pages
+- **PWA / installable** — service worker via vite-plugin-pwa; installable on mobile and desktop
 - **Dark mode** — system-aware with manual toggle
 
 ### Scoring
 - **Real-time scoring interface** — scorekeepers enter scores hole-by-hole
+- **Toggle score off by re-tapping** — tap an active score button to deselect it
 - **Card-based groups** — players organized into scorekeeping cards with rotation
+- **Scorecard back link** — return to the parent league night page from any scorecard
 - **Score audit log** — every change tracked with before/after values
 - **Tie-breaking** — split winnings evenly or run a putt-off round
 
 ### Admin panel
 - **League nights** — create, configure, and manage nights (holes, rounds, tie-breaker mode)
-- **Check-in system** — mark players as arrived and paid per night
+- **Check-in system** — mark players as arrived and paid per night; sorted by first name
 - **Payout calculator** — live breakdown of gross → house cut → EOY pool → payout pool, with per-place payouts and tie resolution
 - **Season financials** — per-night and season-total financial summary
 - **Configurable fee split** — adjustable house and end-of-year amounts via Settings page
 - **Divisions** — full CRUD with per-division entry fees and sort order
 - **Seasons** — manage active season; one active season at a time
 - **Player management** — view, edit, activate/deactivate; assign divisions and admin rights
+- **MOTW management** — create, edit, and publish Moment of the Week posts with image paste
+- **Publish Cards toggle** — visually toggleable button for publishing scorekeeping cards
 - **Docker-ready** — fully containerized, TrueNAS SCALE optimized
 - **GitHub Actions CI/CD** — typecheck → build → push → deploy on every push to `main`
 
@@ -65,6 +74,7 @@ Live at **[mvpl.golf](https://mvpl.golf)**
 | Real-time | WebSockets (`@fastify/websocket`) |
 | Auth | Magic link via email (JWT in HTTP cookie + localStorage) |
 | Email | SMTP-compatible — tested with [Resend](https://resend.com) |
+| PWA | `vite-plugin-pwa` (service worker, installable) |
 | Infra | Docker · nginx · docker-compose |
 | CI/CD | GitHub Actions · GitHub Container Registry (GHCR) |
 
@@ -97,10 +107,14 @@ putting-league/
 │           ├── checkins.ts        # Check-in + payment tracking
 │           ├── cards.ts           # Card creation, player assignment, rotation
 │           ├── stats.ts           # Aggregated stats endpoints
+│           ├── forum.ts           # Forum threads and posts
+│           ├── motw.ts            # Moment of the Week (public)
+│           ├── notifications.ts   # Forum notification preferences
 │           ├── ws.ts              # WebSocket endpoint (live score push)
 │           └── admin/
 │               ├── divisions.ts   # Division CRUD
 │               ├── leagueNights.ts# League night CRUD + status transitions
+│               ├── motw.ts        # MOTW admin management
 │               ├── payouts.ts     # Payout calculator + season financials
 │               ├── players.ts     # Player management
 │               ├── seasons.ts     # Season CRUD
@@ -119,6 +133,7 @@ putting-league/
 │       │   └── theme.ts           # Dark mode state
 │       ├── pages/
 │       │   ├── LandingPage.tsx
+│       │   ├── LeagueInfoPage.tsx
 │       │   ├── LoginPage.tsx
 │       │   ├── VerifyPage.tsx
 │       │   ├── ChooseDivisionPage.tsx
@@ -131,6 +146,8 @@ putting-league/
 │       │   ├── SeasonsPage.tsx
 │       │   ├── SeasonPage.tsx
 │       │   ├── StatsPage.tsx
+│       │   ├── ForumPage.tsx
+│       │   ├── ForumPostPage.tsx
 │       │   └── admin/
 │       │       ├── AdminDashboard.tsx
 │       │       ├── AdminDivisionsPage.tsx
@@ -142,6 +159,7 @@ putting-league/
 │       │       ├── AdminSeasonFinancialsPage.tsx
 │       │       ├── AdminPlayersPage.tsx
 │       │       ├── AdminPlayerDetailPage.tsx
+│       │       ├── AdminMotwPage.tsx
 │       │       └── AdminSettingsPage.tsx
 │       └── App.tsx
 ├── nginx/nginx.conf               # Reverse proxy — routes /api → backend
@@ -228,7 +246,7 @@ The seed creates an admin user — request a magic link on the login page. In de
 | `SMTP_USER` | | — | SMTP username (Resend: `resend`) |
 | `SMTP_PASS` | | — | SMTP password / API key |
 | `SMTP_FROM` | | `noreply@league.local` | Sender address — must be a verified domain |
-| `APP_URL` | | `http://localhost:5173` | Public URL (used in magic link emails) |
+| `APP_URL` | | `http://localhost:5173` | Public URL (used in magic link and forum digest emails) |
 | `CORS_ORIGIN` | | `http://localhost:5173` | Allowed CORS origin(s), comma-separated |
 
 > **Resend:** Set `SMTP_HOST=smtp.resend.com`, `SMTP_USER=resend`, `SMTP_PASS=<api-key>`, and `SMTP_FROM=<you>@<your-verified-domain>`.
@@ -261,18 +279,23 @@ Settings (singleton, id = 1)   ← house/EOY per-entry amounts
 
 User ──< MagicLinkToken
 User ──1 Player >── Division
-User ── avatarDataUrl, isAdmin, passwordHash
+User ── avatarDataUrl, isAdmin
 
 Season ──< LeagueNight ──< Hole
                         ──< Round
                         ──< CheckIn >── Player   (hasPaid flag)
                         ──< Card ──< CardPlayer >── Player
                         ──< PuttOff ──< PuttOffParticipant >── Player
+                        ──< ForumPost ──< ForumComment
 
 Score >── Player, Hole, Round, LeagueNight
 ScoreAuditLog >── Score, LeagueNight
 
 Player ── pdgaNumber, divisionId, isActive
+
+Motw ── image, caption, publishedAt
+
+NotificationPreference >── Player   (forum email digest opt-in)
 ```
 
 ### Migrations
@@ -332,7 +355,7 @@ The app runs on TrueNAS SCALE with external access via a Cloudflare Tunnel — n
 
 ```
 Internet
-  → Cloudflare Tunnel (tunnel ID: nasquatch)
+  → Cloudflare Tunnel (nasquatch)
   → nginx-proxy-manager (NPM, port 80 on TrueNAS host)
   → league-nginx (172.16.0.1:5173 via Docker bridge gateway)
   → league-frontend / league-backend
@@ -488,9 +511,9 @@ House and EOY amounts are set in the admin Settings page and apply immediately. 
 
 | Role | Capabilities |
 |------|-------------|
-| **Admin** | Full access — all league data, players, divisions, seasons, settings, payouts |
+| **Admin** | Full access — all league data, players, divisions, seasons, settings, payouts, MOTW |
 | **Scorekeeper** | Enter and edit scores for their assigned card |
-| **Player** | View own dashboard, scores, stats, and profile |
+| **Player** | View own dashboard, scores, stats, profile, and participate in the forum |
 | **Spectator** | Read-only access to public leaderboards and league nights |
 
 Players sign up via magic link. On first sign-in they choose their division. An admin can subsequently change their division, activate/deactivate their profile, or grant admin rights.
