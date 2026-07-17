@@ -1,9 +1,11 @@
+import { STATUS_CODES } from 'node:http'
 import Fastify, { FastifyInstance, FastifyServerOptions } from 'fastify'
 import fastifyJwt from '@fastify/jwt'
 import fastifyCors from '@fastify/cors'
 import fastifyCookie from '@fastify/cookie'
 import fastifyWebSocket from '@fastify/websocket'
 import fastifyRateLimit from '@fastify/rate-limit'
+import { ZodError } from 'zod'
 
 import { env } from './config/env.js'
 
@@ -40,6 +42,28 @@ export interface BuildAppOptions {
  */
 export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInstance> {
   const app = Fastify({ logger: opts.logger ?? false })
+
+  // Every route validates its body/query with zod's schema.parse(), which throws a
+  // ZodError synchronously on bad input. Without this handler that error falls through
+  // to Fastify's default 500 handler — malformed client input would look like a server
+  // crash to both the client and any error monitoring. Map it to the same `{ error }`
+  // shape every other route in the app already uses for 4xx responses.
+  app.setErrorHandler((error, request, reply) => {
+    if (error instanceof ZodError) {
+      const message = error.issues
+        .map(issue => (issue.path.length ? `${issue.path.join('.')}: ${issue.message}` : issue.message))
+        .join('; ')
+      return reply.status(400).send({ error: message })
+    }
+
+    const statusCode = typeof error.statusCode === 'number' ? error.statusCode : 500
+    if (statusCode >= 500) request.log.error(error)
+    return reply.status(statusCode).send({
+      statusCode,
+      error: STATUS_CODES[statusCode] ?? 'Internal Server Error',
+      message: error.message,
+    })
+  })
 
   // ── Plugins ──────────────────────────────────────────────────────────────────
   await app.register(fastifyCors, {

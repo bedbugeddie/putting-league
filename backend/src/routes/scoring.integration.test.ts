@@ -65,14 +65,11 @@ describe('POST /scoring/score', () => {
     expect(row.enteredBy).toBe(user.id)
   })
 
-  it('returns a raw 500 for out-of-range `made` instead of a 400 (no zod error handler is registered)', async () => {
-    // Documents a real bug, not the desired behavior: scoreSchema.parse(req.body) throws a
-    // ZodError synchronously, and since no app.setErrorHandler() exists anywhere in the app,
-    // Fastify's default handler treats it as an unhandled 500 and dumps the raw Zod issue
-    // array into `message`. The frontend (api/client.ts) reads body.error for its toast text,
-    // which here is the generic "Internal Server Error" — not a helpful validation message —
-    // and this shows up as a server error in logs/monitoring for what is actually bad client
-    // input. This affects every zod-validated route in the app, not just this one.
+  it('returns a 400 with a readable message for out-of-range `made`, not a raw 500', async () => {
+    // scoreSchema.parse(req.body) throws a ZodError synchronously for bad input. app.ts's
+    // global setErrorHandler maps that to a 400 with the same { error: string } shape every
+    // other route in the app uses, instead of letting it fall through to Fastify's default
+    // (unhandled-exception) 500.
     const { hole1, round1, player, token } = await setupNight()
 
     const res = await app.inject({
@@ -82,8 +79,8 @@ describe('POST /scoring/score', () => {
       payload: { playerId: player.id, holeId: hole1.id, roundId: round1.id, position: Position.SHORT, made: 7 },
     })
 
-    expect(res.statusCode).toBe(500)
-    expect(res.json().error).toBe('Internal Server Error')
+    expect(res.statusCode).toBe(400)
+    expect(res.json().error).toMatch(/made/)
   })
 
   it('upserting the same player/hole/round/position again updates rather than duplicates', async () => {
