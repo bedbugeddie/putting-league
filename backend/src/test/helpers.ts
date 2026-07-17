@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma.js'
 import { Position } from '@prisma/client'
+import bcrypt from 'bcryptjs'
 
 /** Truncate all app tables. Call in beforeEach for test isolation. */
 export async function resetDb() {
@@ -44,6 +45,22 @@ export async function createPlayer(divisionId: string | null, overrides: Partial
     data: { userId: user.id, divisionId },
   })
   return { user, player }
+}
+
+/** Creates a User (with a real bcrypt password hash) and a linked Player, for auth route tests. */
+export async function createUserWithPassword(overrides: Partial<{ email: string; name: string; password: string; isAdmin: boolean }> = {}) {
+  const password = overrides.password ?? 'correct horse battery staple'
+  const passwordHash = await bcrypt.hash(password, 12)
+  const user = await prisma.user.create({
+    data: {
+      email: overrides.email ?? `${uniq('user')}@example.com`,
+      name: overrides.name ?? uniq('User'),
+      passwordHash,
+      isAdmin: overrides.isAdmin ?? false,
+    },
+  })
+  const player = await prisma.player.create({ data: { userId: user.id } })
+  return { user, player, password }
 }
 
 export async function createSeason(overrides: Partial<{ name: string; isActive: boolean }> = {}) {
@@ -93,6 +110,22 @@ export async function createScore(params: {
       made: params.made,
       bonus: params.bonus ?? params.made === 3,
       enteredBy: params.enteredBy ?? null,
+    },
+  })
+}
+
+export async function createCheckIn(params: {
+  leagueNightId: string
+  playerId: string
+  divisionId?: string | null
+  hasPaid?: boolean
+}) {
+  return prisma.checkIn.create({
+    data: {
+      leagueNightId: params.leagueNightId,
+      playerId: params.playerId,
+      divisionId: params.divisionId ?? null,
+      hasPaid: params.hasPaid ?? false,
     },
   })
 }
