@@ -1,35 +1,43 @@
 /**
  * seed-demo-night.ts
  *
- * Populates an EXISTING league night with a full set of demo scores for every
- * player on the real roster, so the app has a complete, finished night to show
- * off in a demo.
+ * Fills in MISSING scores for an existing league night so it has a complete
+ * scorecard for a demo — WITHOUT touching any score that already exists.
  *
- * What it does (all idempotent — safe to re-run):
- *   - Resolves the target night (must already exist) and its holes/rounds.
- *     If the night has no holes/rounds yet, creates a default 6 holes / 2 rounds.
- *   - Finds or creates each roster player (User + Player), matching on name.
- *   - Checks each player in (skips if already checked in), marked hasPaid.
- *   - Deletes any existing scores for the night, then inserts a fresh, complete
- *     set for every player: one Score per hole × round × position (SHORT/LONG).
- *   - Uses the CURRENT scoring format: `made` is 0..3 and `bonus` is true on a
- *     3-for-3 (matches upsertScore + calcLeagueNightTotals).
- *   - Marks all rounds complete and the night status → COMPLETED.
- *   - Prints a per-division leaderboard so you can eyeball the result.
+ * NON-DESTRUCTIVE BY DESIGN (safe for a live event with real scores):
+ *   - Never deletes or overwrites an existing Score. Only inserts the
+ *     (player × hole × round × position) rows that are currently missing.
+ *   - Does NOT change the night's status and does NOT mark rounds complete
+ *     (unless you explicitly pass SET_COMPLETED=true).
+ *   - Defaults to a DRY RUN: prints exactly what it would insert and writes
+ *     nothing. Pass APPLY=true to actually write.
  *
- * Scores are generated deterministically (seeded RNG) so re-runs reproduce the
- * same numbers. Change SEED to get a different-but-realistic set.
+ * Who gets filled (SCOPE):
+ *   - "checkedin" (default): only players already checked in to the night —
+ *     the real participants. Fills each one's missing stations. Never invents
+ *     participants.
+ *   - "roster": also ensures every player on the built-in roster is present
+ *     (creates User+Player if missing, checks them in) and fills them. Use
+ *     this only if the demo needs the whole roster on the board.
+ *
+ * Scoring uses the CURRENT format: `made` is 0..3, `bonus` is true on a
+ * 3-for-3 (matches upsertScore + calcLeagueNightTotals). Numbers are
+ * generated deterministically (seeded RNG) so re-runs reproduce.
  *
  * Usage:
+ *   # 1) See what it WOULD do (writes nothing):
  *   DATABASE_URL="postgresql://league:<pw>@<host>:5432/league_db" \
  *     NIGHT_ID="<leagueNightId>" \
  *     npx tsx backend/scripts/seed-demo-night.ts
  *
- *   # NIGHT_ID may also be passed as the first CLI arg:
- *   DATABASE_URL="..." npx tsx backend/scripts/seed-demo-night.ts <leagueNightId>
+ *   # 2) Actually fill the gaps:
+ *   DATABASE_URL="..." NIGHT_ID="..." APPLY=true \
+ *     npx tsx backend/scripts/seed-demo-night.ts
  *
- *   # Optional: SEED=<int> to vary the generated scores;
- *   # DEFAULT_HOLES / DEFAULT_ROUNDS to change the fallback layout.
+ *   # Options:
+ *   #   SCOPE=roster        include the full built-in roster (default: checkedin)
+ *   #   SET_COMPLETED=true  also mark rounds complete + night COMPLETED
+ *   #   SEED=<int>          vary the generated numbers
  */
 
 import { PrismaClient, Position } from '@prisma/client'
@@ -46,9 +54,10 @@ if (!NIGHT_ID) {
   process.exit(1)
 }
 
+const APPLY = /^(1|true|yes)$/i.test(process.env.APPLY ?? '')
+const SET_COMPLETED = /^(1|true|yes)$/i.test(process.env.SET_COMPLETED ?? '')
+const SCOPE = (process.env.SCOPE ?? 'checkedin').toLowerCase() // 'checkedin' | 'roster'
 const SEED = Number(process.env.SEED ?? 20260919)
-const DEFAULT_HOLES = Number(process.env.DEFAULT_HOLES ?? 6)
-const DEFAULT_ROUNDS = Number(process.env.DEFAULT_ROUNDS ?? 2)
 
 const prisma = new PrismaClient({ datasources: { db: { url: DB_URL } } })
 
@@ -76,17 +85,17 @@ const MAKE_PROB: Record<string, { SHORT: number; LONG: number }> = {
 }
 const FALLBACK_PROB = { SHORT: 0.65, LONG: 0.45 }
 
-function generateMade(divisionCode: string, position: 'SHORT' | 'LONG'): number {
-  const p = (MAKE_PROB[divisionCode] ?? FALLBACK_PROB)[position]
+function generateMade(divisionCode: string | null, position: Position): number {
+  const key = position === Position.SHORT ? 'SHORT' : 'LONG'
+  const p = (MAKE_PROB[divisionCode ?? ''] ?? FALLBACK_PROB)[key]
   let made = 0
   for (let i = 0; i < 3; i++) if (rng() < p) made++
   return made // 0..3
 }
 
-// ── Roster (real players) — name, division, PDGA number ─────────────────────
+// ── Roster (real players) — only used when SCOPE=roster ─────────────────────
 type RosterEntry = { name: string; division: string; pdga?: string }
 
-// Name aliases: roster name → how it may already be stored in the DB
 const NAME_ALIASES: Record<string, string> = {
   'Michael Sullivan': 'Mike Sullivan',
   'William Baldridge': 'Bill Baldridge',
@@ -98,7 +107,6 @@ const NAME_ALIASES: Record<string, string> = {
 }
 
 const ROSTER: RosterEntry[] = [
-  // ── AAA ──────────────────────────────────────────────────────────────────
   { name: 'Greg Bianco', division: 'AAA' },
   { name: 'Alan Chambers', division: 'AAA', pdga: '90684' },
   { name: 'Michael Chambers', division: 'AAA', pdga: '155123' },
@@ -116,16 +124,12 @@ const ROSTER: RosterEntry[] = [
   { name: 'Rick Lopez', division: 'AAA', pdga: '215678' },
   { name: 'Jeremy Jacobs', division: 'AAA', pdga: '184618' },
   { name: 'Ryan Tripp', division: 'AAA', pdga: '179839' },
-
-  // ── BBB ──────────────────────────────────────────────────────────────────
   { name: 'Al Ashcraft', division: 'BBB', pdga: '78218' },
   { name: 'Ben Lopez', division: 'BBB' },
   { name: 'Danimal', division: 'BBB' },
   { name: 'Joey Westhoff', division: 'BBB', pdga: '151475' },
   { name: 'Dan DeRoche', division: 'BBB' },
   { name: 'Sean Stanford', division: 'BBB' },
-
-  // ── CCC ──────────────────────────────────────────────────────────────────
   { name: 'Renee Bastarache', division: 'CCC' },
   { name: 'Kasia Czuba', division: 'CCC' },
   { name: 'Ashley Smith-Boutin', division: 'CCC' },
@@ -137,8 +141,6 @@ const ROSTER: RosterEntry[] = [
   { name: 'Katie Alex', division: 'CCC' },
   { name: 'Allie Lawler', division: 'CCC', pdga: '227026' },
   { name: 'Kayla Holler', division: 'CCC' },
-
-  // ── DDD ──────────────────────────────────────────────────────────────────
   { name: 'Eric Faulkner', division: 'DDD', pdga: '321062' },
   { name: 'David Driscoll', division: 'DDD' },
   { name: 'Robert Williams', division: 'DDD', pdga: '251926' },
@@ -153,52 +155,57 @@ function fakeEmail(name: string): string {
   return `${slugify(name)}@player.mvpl.golf`
 }
 
-async function findOrCreatePlayer(
-  entry: RosterEntry,
-  divisionMap: Map<string, string>,
-): Promise<string> {
-  const candidates = [entry.name, NAME_ALIASES[entry.name]].filter(Boolean) as string[]
+type Target = { playerId: string; name: string; divisionCode: string | null }
 
-  for (const name of candidates) {
-    const user = await prisma.user.findFirst({
-      where: { name: { equals: name, mode: 'insensitive' } },
-      include: { player: true },
-    })
-    if (user?.player) return user.player.id
-  }
-
-  const parts = entry.name.split(' ')
-  const firstName = parts[0]
-  const lastName = parts.slice(1).join(' ') || null
-  const email = fakeEmail(entry.name)
-
-  console.log(`    ➕ Creating new player: ${entry.name} <${email}>`)
-
-  const user = await prisma.user.create({
-    data: {
-      email,
-      name: entry.name,
-      firstName,
-      lastName,
-      player: {
-        create: {
-          divisionId: divisionMap.get(entry.division) ?? null,
-          pdgaNumber: entry.pdga ?? null,
-          isActive: true,
+async function resolveRosterTargets(divisionMap: Map<string, string>): Promise<Target[]> {
+  const targets: Target[] = []
+  for (const entry of ROSTER) {
+    const candidates = [entry.name, NAME_ALIASES[entry.name]].filter(Boolean) as string[]
+    let playerId: string | undefined
+    for (const name of candidates) {
+      const user = await prisma.user.findFirst({
+        where: { name: { equals: name, mode: 'insensitive' } },
+        include: { player: true },
+      })
+      if (user?.player) {
+        playerId = user.player.id
+        break
+      }
+    }
+    if (!playerId) {
+      const parts = entry.name.split(' ')
+      if (!APPLY) {
+        console.log(`    (would create player: ${entry.name})`)
+        continue // nothing to write in dry run; skip filling a not-yet-created player
+      }
+      const user = await prisma.user.create({
+        data: {
+          email: fakeEmail(entry.name),
+          name: entry.name,
+          firstName: parts[0],
+          lastName: parts.slice(1).join(' ') || null,
+          player: {
+            create: {
+              divisionId: divisionMap.get(entry.division) ?? null,
+              pdgaNumber: entry.pdga ?? null,
+              isActive: true,
+            },
+          },
         },
-      },
-    },
-    include: { player: true },
-  })
-
-  return user.player!.id
+        include: { player: true },
+      })
+      playerId = user.player!.id
+      console.log(`    ➕ Created player: ${entry.name}`)
+    }
+    targets.push({ playerId, name: entry.name, divisionCode: entry.division })
+  }
+  return targets
 }
 
 async function main() {
-  console.log(`Connecting to database…`)
+  console.log(`Mode: ${APPLY ? 'APPLY (writing)' : 'DRY RUN (no writes)'} · Scope: ${SCOPE}`)
   await prisma.$connect()
 
-  // ── Resolve the night ──────────────────────────────────────────────────────
   const night = await prisma.leagueNight.findUnique({
     where: { id: NIGHT_ID },
     include: {
@@ -209,132 +216,121 @@ async function main() {
   if (!night) throw new Error(`League night ${NIGHT_ID} not found`)
   console.log(`Night: ${night.date.toISOString().slice(0, 10)} (${night.status})`)
   console.log(`  Holes: ${night.holes.length}, Rounds: ${night.rounds.length}`)
-
-  // ── Create default holes/rounds if the night has none ──────────────────────
-  let holes = night.holes
-  if (holes.length === 0) {
-    console.log(`  No holes — creating ${DEFAULT_HOLES}`)
-    await prisma.hole.createMany({
-      data: Array.from({ length: DEFAULT_HOLES }, (_, i) => ({
-        leagueNightId: NIGHT_ID,
-        number: i + 1,
-      })),
-    })
-    holes = await prisma.hole.findMany({
-      where: { leagueNightId: NIGHT_ID },
-      orderBy: { number: 'asc' },
-    })
+  if (night.holes.length === 0 || night.rounds.length === 0) {
+    throw new Error('Night has no holes or rounds — refusing to guess a layout for a live event')
   }
+  const { holes, rounds } = night
 
-  let rounds = night.rounds
-  if (rounds.length === 0) {
-    console.log(`  No rounds — creating ${DEFAULT_ROUNDS}`)
-    await prisma.round.createMany({
-      data: Array.from({ length: DEFAULT_ROUNDS }, (_, i) => ({
-        leagueNightId: NIGHT_ID,
-        number: i + 1,
-      })),
-    })
-    rounds = await prisma.round.findMany({
-      where: { leagueNightId: NIGHT_ID },
-      orderBy: { number: 'asc' },
-    })
-  }
-
-  // ── Division map ────────────────────────────────────────────────────────────
   const divisions = await prisma.division.findMany()
   const divisionMap = new Map(divisions.map(d => [d.code, d.id]))
-  for (const code of new Set(ROSTER.map(r => r.division))) {
-    if (!divisionMap.has(code)) throw new Error(`Division ${code} not found — run the seed first`)
+  const divisionCodeById = new Map(divisions.map(d => [d.id, d.code]))
+
+  // ── Existing scores — the source of truth we must not disturb ───────────────
+  const existing = await prisma.score.findMany({
+    where: { hole: { leagueNightId: NIGHT_ID } },
+    include: { player: { include: { user: true, division: true } } },
+  })
+  const existingKeys = new Set(
+    existing.map(s => `${s.playerId}|${s.holeId}|${s.roundId}|${s.position}`),
+  )
+  console.log(`\nExisting scores: ${existing.length} (these will NOT be changed)`)
+
+  // Running totals per player, seeded from existing scores (final = existing + inserts).
+  const totals = new Map<string, { name: string; division: string | null; total: number }>()
+  for (const s of existing) {
+    const t = totals.get(s.playerId) ?? {
+      name: s.player.user.name,
+      division: s.player.division?.code ?? null,
+      total: 0,
+    }
+    t.total += s.made + (s.bonus ? 1 : 0)
+    totals.set(s.playerId, t)
   }
 
-  // ── Existing check-ins (skip duplicates) ────────────────────────────────────
-  const existingCheckIns = await prisma.checkIn.findMany({
-    where: { leagueNightId: NIGHT_ID },
-    select: { playerId: true },
-  })
-  const checkedIn = new Set(existingCheckIns.map(c => c.playerId))
-  console.log(`\nExisting check-ins: ${checkedIn.size}`)
+  // ── Determine target players ─────────────────────────────────────────────────
+  let targets: Target[]
+  if (SCOPE === 'roster') {
+    targets = await resolveRosterTargets(divisionMap)
+  } else {
+    const checkIns = await prisma.checkIn.findMany({
+      where: { leagueNightId: NIGHT_ID },
+      include: { player: { include: { user: true, division: true } } },
+    })
+    targets = checkIns.map(c => ({
+      playerId: c.playerId,
+      name: c.player.user.name,
+      divisionCode:
+        c.player.division?.code ?? (c.divisionId ? divisionCodeById.get(c.divisionId) ?? null : null),
+    }))
+    console.log(`Checked-in players: ${targets.length}`)
+  }
 
-  // ── Wipe existing scores so we insert a clean, complete set ──────────────────
-  const deleted = await prisma.score.deleteMany({ where: { hole: { leagueNightId: NIGHT_ID } } })
-  console.log(`Deleted ${deleted.count} existing scores (will be regenerated)`)
+  // ── Compute the missing rows ────────────────────────────────────────────────
+  const toInsert: {
+    playerId: string
+    holeId: string
+    roundId: string
+    position: Position
+    made: number
+    bonus: boolean
+  }[] = []
 
-  // ── Players → check-ins + scores ─────────────────────────────────────────────
-  console.log('\nProcessing players…')
-  let ciCreated = 0
-  let scoreRows = 0
-
-  // Accumulate a per-player total for the leaderboard summary.
-  const summary: { name: string; division: string; total: number }[] = []
-
-  for (const entry of ROSTER) {
-    const playerId = await findOrCreatePlayer(entry, divisionMap)
-    const divisionId = divisionMap.get(entry.division) ?? null
-
-    if (!checkedIn.has(playerId)) {
-      await prisma.checkIn.create({
-        data: { leagueNightId: NIGHT_ID, playerId, divisionId, hasPaid: true },
-      })
-      ciCreated++
-    }
-
-    let playerTotal = 0
-    const data: {
-      playerId: string
-      holeId: string
-      roundId: string
-      position: Position
-      made: number
-      bonus: boolean
-    }[] = []
-
+  for (const target of targets) {
+    let filledForPlayer = 0
     for (const round of rounds) {
       for (const hole of holes) {
         for (const position of [Position.SHORT, Position.LONG]) {
-          const made = generateMade(entry.division, position)
+          const key = `${target.playerId}|${hole.id}|${round.id}|${position}`
+          if (existingKeys.has(key)) continue
+          const made = generateMade(target.divisionCode, position)
           const bonus = made === 3
-          data.push({ playerId, holeId: hole.id, roundId: round.id, position, made, bonus })
-          playerTotal += made + (bonus ? 1 : 0)
+          toInsert.push({ playerId: target.playerId, holeId: hole.id, roundId: round.id, position, made, bonus })
+          filledForPlayer++
+          const t = totals.get(target.playerId) ?? { name: target.name, division: target.divisionCode, total: 0 }
+          t.total += made + (bonus ? 1 : 0)
+          totals.set(target.playerId, t)
         }
       }
     }
-
-    await prisma.score.createMany({ data })
-    scoreRows += data.length
-    summary.push({ name: entry.name, division: entry.division, total: playerTotal })
-    console.log(`  ✓ ${entry.name} (${entry.division}) — total ${playerTotal} (${data.length} rows)`)
+    if (filledForPlayer > 0) {
+      console.log(`  ${APPLY ? 'fill' : 'would fill'} ${String(filledForPlayer).padStart(2)} rows — ${target.name} (${target.divisionCode ?? '?'})`)
+    }
   }
 
-  // ── Mark rounds complete + night COMPLETED ───────────────────────────────────
-  await prisma.round.updateMany({
-    where: { leagueNightId: NIGHT_ID },
-    data: { isComplete: true },
-  })
-  await prisma.leagueNight.update({
-    where: { id: NIGHT_ID },
-    data: { status: 'COMPLETED' },
-  })
-  console.log('\n✓ Rounds marked complete, night status → COMPLETED')
+  const stationsPerPlayer = holes.length * rounds.length * 2
+  console.log(`\nMissing rows to insert: ${toInsert.length} (full night = ${stationsPerPlayer}/player)`)
 
-  // ── Leaderboard preview (matches calcLeagueNightTotals math) ─────────────────
-  console.log('\n─── Leaderboard preview ─────────────────────────────')
+  // ── Write (or not) ───────────────────────────────────────────────────────────
+  if (!APPLY) {
+    console.log('\nDRY RUN — nothing was written. Re-run with APPLY=true to insert.')
+  } else if (toInsert.length === 0) {
+    console.log('\nNothing to insert — every target station already has a score.')
+  } else {
+    const res = await prisma.score.createMany({ data: toInsert, skipDuplicates: true })
+    console.log(`\n✓ Inserted ${res.count} score rows (existing scores untouched)`)
+    if (SET_COMPLETED) {
+      await prisma.round.updateMany({ where: { leagueNightId: NIGHT_ID }, data: { isComplete: true } })
+      await prisma.leagueNight.update({ where: { id: NIGHT_ID }, data: { status: 'COMPLETED' } })
+      console.log('✓ Rounds marked complete, night status → COMPLETED')
+    }
+  }
+
+  // ── Leaderboard preview (final state = existing + planned/inserted) ──────────
+  console.log('\n─── Leaderboard preview (existing + filled) ─────────')
   const byDiv = new Map<string, { name: string; total: number }[]>()
-  for (const s of summary) {
-    if (!byDiv.has(s.division)) byDiv.set(s.division, [])
-    byDiv.get(s.division)!.push({ name: s.name, total: s.total })
+  for (const t of totals.values()) {
+    const code = t.division ?? '??'
+    if (!byDiv.has(code)) byDiv.set(code, [])
+    byDiv.get(code)!.push({ name: t.name, total: t.total })
   }
-  for (const code of ['AAA', 'BBB', 'CCC', 'DDD']) {
-    const rows = byDiv.get(code)
-    if (!rows) continue
+  for (const code of [...byDiv.keys()].sort()) {
+    const rows = byDiv.get(code)!
     rows.sort((a, b) => b.total - a.total)
     console.log(`\n  ${code}`)
     rows.forEach((r, i) => console.log(`    ${String(i + 1).padStart(2)}. ${r.name.padEnd(22)} ${r.total}`))
   }
 
-  console.log(`\n✅ Done — ${ciCreated} new check-ins, ${scoreRows} score rows across ${ROSTER.length} players`)
-  console.log(`   Holes: ${holes.length}, Rounds: ${rounds.length}, Seed: ${SEED}`)
-
+  console.log(`\n${APPLY ? '✅ Done' : 'ℹ️  Dry run complete'} · Seed: ${SEED}`)
   await prisma.$disconnect()
 }
 
